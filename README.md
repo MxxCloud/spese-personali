@@ -21,6 +21,12 @@ descrizione, con scorciatoie per questo mese, il mese scorso e l'anno corrente.
 totali per categoria e per mese come grafici a barre. Filtri, riepilogo ed
 elenco mostrano sempre la stessa selezione di spese.
 
+**Esportazione CSV.** Le spese si scaricano in due formati: uno per Excel in
+locale italiana (separatore `;`, decimali a virgola, date `gg/mm/aaaa`) e uno
+standard internazionale (separatore `,`, decimali a punto, date `aaaa-mm-gg`)
+per LibreOffice, Fogli Google e strumenti di analisi. L'esportazione contiene
+le spese filtrate: per scaricarle tutte, azzera prima i filtri.
+
 ## Avvio
 
 ```

@@ -23,6 +23,9 @@ const filtroA = document.getElementById("filtro-a");
 const filtroCategoria = document.getElementById("filtro-categoria");
 const filtroTesto = document.getElementById("filtro-testo");
 const scorciatoie = document.querySelector(".scorciatoie");
+const esportazioni = document.getElementById("esportazioni");
+const esportaExcel = document.getElementById("esporta-excel");
+const esportaStandard = document.getElementById("esporta-standard");
 const kpiMedia = document.getElementById("kpi-media");
 const kpiGiornaliera = document.getElementById("kpi-giornaliera");
 const kpiGiorni = document.getElementById("kpi-giorni");
@@ -378,7 +381,17 @@ async function carica() {
       (filtrato ? (singolare ? " filtrata" : " filtrate") : "")
     : "";
 
+  for (const [collegamento, formato] of [
+    [esportaExcel, "excel"],
+    [esportaStandard, "standard"],
+  ]) {
+    const query = new URLSearchParams(parametri);
+    query.set("formato", formato);
+    collegamento.href = `/api/spese.csv?${query}`;
+  }
+
   const senzaSpese = numero === 0;
+  esportazioni.hidden = senzaSpese;
   tabella.hidden = senzaSpese;
   vuotoEl.hidden = !senzaSpese;
   vuotoEl.textContent = filtrato

@@ -368,6 +368,32 @@ tr.in-modifica {
   filter: none;
 }
 
+.esportazioni {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.esporta {
+  padding: 0.4rem 0.85rem;
+  border: 1px solid var(--bordo);
+  border-radius: 7px;
+  color: var(--testo-tenue);
+  font-size: 0.85rem;
+  text-decoration: none;
+}
+
+.esporta:hover {
+  border-color: var(--accento);
+  color: var(--testo);
+}
+
+.esporta:focus-visible {
+  outline: 2px solid var(--accento);
+  outline-offset: 2px;
+}
+
 .conteggio {
   color: var(--testo-tenue);
   font-size: 0.85rem;

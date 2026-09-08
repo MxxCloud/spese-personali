@@ -1,5 +1,7 @@
 """Server locale del tracker di spese personali."""
 
+import csv
+import io
 import json
 import re
 import sqlite3
@@ -21,6 +23,13 @@ LUNGHEZZA_MASSIMA_NOME = 40
 
 PERCORSO_SPESA = re.compile(r"^/api/spese/(\d+)$")
 PERCORSO_CATEGORIA = re.compile(r"^/api/categorie/(\d+)$")
+
+# Excel in locale italiana usa la virgola per i decimali, quindi separa i campi
+# con il punto e virgola e non legge l'UTF-8 senza BOM.
+DIALETTI_CSV = {
+    "excel": {"separatore": ";", "decimale": ",", "data": "italiana", "bom": True},
+    "standard": {"separatore": ",", "decimale": ".", "data": "iso", "bom": False},
+}
 
 RISORSE_STATICHE = {
     "/": ("index.html", "text/html; charset=utf-8"),
@@ -129,6 +138,40 @@ def elenca_spese(filtri=None):
         }
         for riga in righe
     ]
+
+
+def spese_in_csv(filtri, formato):
+    """Rende le spese filtrate come file CSV, nel dialetto richiesto."""
+    dialetto = DIALETTI_CSV.get(formato, DIALETTI_CSV["excel"])
+
+    buffer = io.StringIO(newline="")
+    scrittore = csv.writer(
+        buffer, delimiter=dialetto["separatore"], lineterminator="\r\n"
+    )
+    scrittore.writerow(("Data", "Importo", "Categoria", "Descrizione"))
+    for spesa in elenca_spese(filtri):
+        scrittore.writerow(
+            (
+                data_nel_dialetto(spesa["data"], dialetto),
+                f"{spesa['importo']:.2f}".replace(".", dialetto["decimale"]),
+                spesa["categoria"],
+                spesa["descrizione"],
+            )
+        )
+
+    return buffer.getvalue().encode("utf-8-sig" if dialetto["bom"] else "utf-8")
+
+
+def data_nel_dialetto(iso, dialetto):
+    if dialetto["data"] == "iso":
+        return iso
+    return date.fromisoformat(iso).strftime("%d/%m/%Y")
+
+
+def nome_file_csv(filtri):
+    if filtri.get("da") or filtri.get("a"):
+        return f"spese_{filtri.get('da', 'inizio')}_{filtri.get('a', 'oggi')}.csv"
+    return f"spese_{date.today().isoformat()}.csv"
 
 
 def aggiungi_spesa(spesa):
@@ -369,6 +412,10 @@ class Gestore(BaseHTTPRequestHandler):
                     "categorie": [c["nome"] for c in elenca_categorie()],
                 },
             )
+        elif indirizzo.path == "/api/spese.csv":
+            filtri = filtri_da_query(indirizzo.query)
+            formato = (parse_qs(indirizzo.query).get("formato") or [""])[0]
+            self._csv(spese_in_csv(filtri, formato), nome_file_csv(filtri))
         elif indirizzo.path == "/api/riepilogo":
             self._json(200, riepilogo(filtri_da_query(indirizzo.query)))
         elif indirizzo.path == "/api/categorie":
@@ -477,13 +524,23 @@ class Gestore(BaseHTTPRequestHandler):
             "application/json; charset=utf-8",
         )
 
+    def _csv(self, dati, nome_file):
+        self._rispondi(
+            200,
+            dati,
+            "text/csv; charset=utf-8",
+            (("Content-Disposition", f'attachment; filename="{nome_file}"'),),
+        )
+
     def _statico(self, nome, tipo):
         self._rispondi(200, (STATIC_DIR / nome).read_bytes(), tipo)
 
-    def _rispondi(self, stato, dati, tipo):
+    def _rispondi(self, stato, dati, tipo, intestazioni=()):
         self.send_response(stato)
         self.send_header("Content-Type", tipo)
         self.send_header("Content-Length", str(len(dati)))
+        for nome, valore in intestazioni:
+            self.send_header(nome, valore)
         self.end_headers()
         self.wfile.write(dati)
 
