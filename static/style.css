@@ -1,0 +1,191 @@
+:root {
+  --sfondo: #f5f6f8;
+  --superficie: #ffffff;
+  --testo: #1c1f24;
+  --testo-tenue: #626a75;
+  --bordo: #dfe3e8;
+  --accento: #2f6f4f;
+  --accento-testo: #ffffff;
+  --errore: #a4262c;
+  --errore-sfondo: #fdf2f2;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --sfondo: #16181c;
+    --superficie: #1e2126;
+    --testo: #e8eaed;
+    --testo-tenue: #a0a7b4;
+    --bordo: #333840;
+    --accento: #4c9e73;
+    --accento-testo: #10130f;
+    --errore: #f28b82;
+    --errore-sfondo: #2a1d1d;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 2rem 1rem;
+  background: var(--sfondo);
+  color: var(--testo);
+  font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+main {
+  max-width: 52rem;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.intestazione {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+h1 {
+  margin: 0;
+  font-size: 1.6rem;
+  letter-spacing: -0.01em;
+}
+
+.totale {
+  margin: 0;
+  color: var(--testo-tenue);
+  font-size: 0.95rem;
+}
+
+.totale strong {
+  color: var(--testo);
+  font-size: 1.3rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.scheda {
+  background: var(--superficie);
+  border: 1px solid var(--bordo);
+  border-radius: 10px;
+}
+
+form.scheda {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 1rem;
+  align-items: end;
+  padding: 1.25rem;
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.campo-largo {
+  grid-column: 1 / -1;
+}
+
+label {
+  color: var(--testo-tenue);
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+input,
+select {
+  width: 100%;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--bordo);
+  border-radius: 7px;
+  background: var(--sfondo);
+  color: var(--testo);
+  font: inherit;
+  font-size: 0.95rem;
+}
+
+input:focus-visible,
+select:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--accento);
+  outline-offset: 2px;
+}
+
+button {
+  grid-column: 1 / -1;
+  justify-self: start;
+  padding: 0.6rem 1.4rem;
+  border: none;
+  border-radius: 7px;
+  background: var(--accento);
+  color: var(--accento-testo);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+button:hover {
+  filter: brightness(1.08);
+}
+
+.errori {
+  margin: 0;
+  padding: 0.85rem 1rem 0.85rem 2.2rem;
+  border: 1px solid var(--errore);
+  border-radius: 10px;
+  background: var(--errore-sfondo);
+  color: var(--errore);
+  font-size: 0.9rem;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  overflow: hidden;
+}
+
+th,
+td {
+  padding: 0.7rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--bordo);
+}
+
+th {
+  color: var(--testo-tenue);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+td.num {
+  font-weight: 600;
+}
+
+.vuoto {
+  margin: 0;
+  padding: 2rem;
+  border: 1px dashed var(--bordo);
+  border-radius: 10px;
+  color: var(--testo-tenue);
+  text-align: center;
+}
