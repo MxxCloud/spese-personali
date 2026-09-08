@@ -46,7 +46,7 @@ def elenca_spese():
     with apri_db() as conn:
         righe = conn.execute(
             "SELECT id, data, importo_cent, categoria, descrizione"
-            " FROM spese ORDER BY data DESC, id DESC"
+            " FROM spese ORDER BY data, id"
         ).fetchall()
     return [
         {
