@@ -53,11 +53,21 @@
     </table>
 
     <p id="vuoto" class="vuoto" hidden>Nessuna spesa registrata finora.</p>
+
+    <details class="scheda gestione">
+      <summary>Gestisci categorie</summary>
+      <form id="form-categoria" class="riga-aggiunta" novalidate>
+        <label for="nuova-categoria" class="etichetta-nascosta">Nuova categoria</label>
+        <input type="text" id="nuova-categoria" name="nome" maxlength="40" placeholder="Nome della nuova categoria">
+        <button type="submit">Aggiungi</button>
+      </form>
+      <ul id="elenco-categorie" class="elenco-categorie"></ul>
+    </details>
   </main>
 
   <dialog id="dialogo-conferma">
     <form method="dialog">
-      <h2>Eliminare la spesa?</h2>
+      <h2 id="titolo-conferma">Eliminare la spesa?</h2>
       <p id="dettaglio-conferma"></p>
       <div class="azioni-dialogo">
         <button value="annulla" class="secondario">Annulla</button>

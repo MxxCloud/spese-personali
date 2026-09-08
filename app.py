@@ -14,10 +14,12 @@ STATIC_DIR = BASE_DIR / "static"
 HOST = "127.0.0.1"
 PORT = 8000
 
-CATEGORIE = ("Alimentari", "Casa", "Trasporti", "Salute", "Svago", "Altro")
+CATEGORIE_INIZIALI = ("Alimentari", "Casa", "Trasporti", "Salute", "Svago", "Altro")
 IMPORTO_MASSIMO = 1_000_000
+LUNGHEZZA_MASSIMA_NOME = 40
 
 PERCORSO_SPESA = re.compile(r"^/api/spese/(\d+)$")
+PERCORSO_CATEGORIA = re.compile(r"^/api/categorie/(\d+)$")
 
 RISORSE_STATICHE = {
     "/": ("index.html", "text/html; charset=utf-8"),
@@ -42,6 +44,21 @@ def inizializza_db():
                    categoria TEXT NOT NULL,
                    descrizione TEXT NOT NULL DEFAULT ''
                )"""
+        )
+        conn.execute(
+            """CREATE TABLE IF NOT EXISTS categorie (
+                   id INTEGER PRIMARY KEY AUTOINCREMENT,
+                   nome TEXT NOT NULL UNIQUE COLLATE NOCASE
+               )"""
+        )
+        if not conn.execute("SELECT COUNT(*) FROM categorie").fetchone()[0]:
+            conn.executemany(
+                "INSERT INTO categorie (nome) VALUES (?)",
+                [(nome,) for nome in CATEGORIE_INIZIALI],
+            )
+        # Nessuna spesa deve restare orfana di una categoria non più in elenco.
+        conn.execute(
+            "INSERT OR IGNORE INTO categorie (nome) SELECT DISTINCT categoria FROM spese"
         )
 
 
@@ -99,6 +116,86 @@ def elimina_spesa(id_spesa):
         return conn.execute("DELETE FROM spese WHERE id = ?", (id_spesa,)).rowcount > 0
 
 
+def elenca_categorie():
+    with apri_db() as conn:
+        righe = conn.execute(
+            "SELECT c.id, c.nome,"
+            " (SELECT COUNT(*) FROM spese s WHERE s.categoria = c.nome) AS usi"
+            " FROM categorie c ORDER BY c.nome COLLATE NOCASE"
+        ).fetchall()
+    return [{"id": r["id"], "nome": r["nome"], "usi": r["usi"]} for r in righe]
+
+
+def aggiungi_categoria(nome):
+    with apri_db() as conn:
+        try:
+            return conn.execute(
+                "INSERT INTO categorie (nome) VALUES (?)", (nome,)
+            ).lastrowid, None
+        except sqlite3.IntegrityError:
+            return None, "Esiste già una categoria con questo nome."
+
+
+def rinomina_categoria(id_categoria, nome):
+    with apri_db() as conn:
+        riga = conn.execute(
+            "SELECT nome FROM categorie WHERE id = ?", (id_categoria,)
+        ).fetchone()
+        if riga is None:
+            return False, "La categoria non esiste."
+        try:
+            conn.execute(
+                "UPDATE categorie SET nome = ? WHERE id = ?", (nome, id_categoria)
+            )
+        except sqlite3.IntegrityError:
+            return False, "Esiste già una categoria con questo nome."
+        conn.execute(
+            "UPDATE spese SET categoria = ? WHERE categoria = ?", (nome, riga["nome"])
+        )
+        return True, None
+
+
+def elimina_categoria(id_categoria):
+    with apri_db() as conn:
+        riga = conn.execute(
+            "SELECT nome FROM categorie WHERE id = ?", (id_categoria,)
+        ).fetchone()
+        if riga is None:
+            return False, "La categoria non esiste."
+
+        usi = conn.execute(
+            "SELECT COUNT(*) FROM spese WHERE categoria = ?", (riga["nome"],)
+        ).fetchone()[0]
+        if usi:
+            return False, (
+                f"«{riga['nome']}» è usata da {usi} "
+                f"{'spesa' if usi == 1 else 'spese'}: riassegnale prima di eliminarla."
+            )
+
+        conn.execute("DELETE FROM categorie WHERE id = ?", (id_categoria,))
+        return True, None
+
+
+def nome_categoria_canonico(nome):
+    """Restituisce il nome come registrato in tabella, o None se non esiste."""
+    with apri_db() as conn:
+        riga = conn.execute(
+            "SELECT nome FROM categorie WHERE nome = ?", (nome,)
+        ).fetchone()
+    return riga["nome"] if riga else None
+
+
+def valida_nome_categoria(payload):
+    nome = str(payload.get("nome", "")).strip()
+    if not nome:
+        return None, ["Il nome della categoria non può essere vuoto."]
+    if len(nome) > LUNGHEZZA_MASSIMA_NOME:
+        return None, [
+            f"Il nome non può superare {LUNGHEZZA_MASSIMA_NOME} caratteri."
+        ]
+    return nome, []
+
+
 def valida(payload):
     """Converte il payload in una spesa pronta per il database.
 
@@ -126,8 +223,8 @@ def valida(payload):
         else:
             importo_cent = round(importo * 100)
 
-    categoria = str(payload.get("categoria", "")).strip()
-    if categoria not in CATEGORIE:
+    categoria = nome_categoria_canonico(str(payload.get("categoria", "")).strip())
+    if categoria is None:
         errori.append("Scegli una categoria tra quelle disponibili.")
 
     if errori:
@@ -148,51 +245,87 @@ class Gestore(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path == "/api/spese":
             spese = elenca_spese()
+            categorie = elenca_categorie()
             self._json(
                 200,
                 {
                     "spese": spese,
                     "totale": round(sum(s["importo"] for s in spese), 2),
-                    "categorie": list(CATEGORIE),
+                    "categorie": [c["nome"] for c in categorie],
                 },
             )
+        elif self.path == "/api/categorie":
+            self._json(200, {"categorie": elenca_categorie()})
         elif self.path in RISORSE_STATICHE:
             self._statico(*RISORSE_STATICHE[self.path])
         else:
             self._non_trovato()
 
     def do_POST(self):
-        if self.path != "/api/spese":
+        if self.path == "/api/spese":
+            spesa = self._spesa_dal_corpo()
+            if spesa is not None:
+                self._json(201, {"id": aggiungi_spesa(spesa)})
+        elif self.path == "/api/categorie":
+            nome = self._nome_categoria_dal_corpo()
+            if nome is not None:
+                id_categoria, errore = aggiungi_categoria(nome)
+                if errore:
+                    self._json(400, {"errori": [errore]})
+                else:
+                    self._json(201, {"id": id_categoria})
+        else:
             self._non_trovato()
-            return
-
-        spesa = self._spesa_dal_corpo()
-        if spesa is not None:
-            self._json(201, {"id": aggiungi_spesa(spesa)})
 
     def do_PUT(self):
-        corrispondenza = PERCORSO_SPESA.match(self.path)
-        if not corrispondenza:
-            self._non_trovato()
-            return
+        spesa_da_modificare = PERCORSO_SPESA.match(self.path)
+        categoria_da_rinominare = PERCORSO_CATEGORIA.match(self.path)
 
-        spesa = self._spesa_dal_corpo()
-        if spesa is None:
-            return
-
-        if aggiorna_spesa(int(corrispondenza.group(1)), spesa):
-            self._json(200, {"ok": True})
+        if spesa_da_modificare:
+            spesa = self._spesa_dal_corpo()
+            if spesa is None:
+                return
+            if aggiorna_spesa(int(spesa_da_modificare.group(1)), spesa):
+                self._json(200, {"ok": True})
+            else:
+                self._non_trovato("La spesa da modificare non esiste.")
+        elif categoria_da_rinominare:
+            nome = self._nome_categoria_dal_corpo()
+            if nome is None:
+                return
+            self._esito(rinomina_categoria(int(categoria_da_rinominare.group(1)), nome))
         else:
-            self._non_trovato("La spesa da modificare non esiste.")
+            self._non_trovato()
 
     def do_DELETE(self):
-        corrispondenza = PERCORSO_SPESA.match(self.path)
-        if not corrispondenza:
-            self._non_trovato()
-        elif elimina_spesa(int(corrispondenza.group(1))):
-            self._json(200, {"ok": True})
+        spesa_da_eliminare = PERCORSO_SPESA.match(self.path)
+        categoria_da_eliminare = PERCORSO_CATEGORIA.match(self.path)
+
+        if spesa_da_eliminare:
+            if elimina_spesa(int(spesa_da_eliminare.group(1))):
+                self._json(200, {"ok": True})
+            else:
+                self._non_trovato("La spesa da eliminare non esiste.")
+        elif categoria_da_eliminare:
+            self._esito(elimina_categoria(int(categoria_da_eliminare.group(1))))
         else:
-            self._non_trovato("La spesa da eliminare non esiste.")
+            self._non_trovato()
+
+    def _esito(self, risultato):
+        riuscito, errore = risultato
+        self._json(200 if riuscito else 400, {"ok": True} if riuscito else {"errori": [errore]})
+
+    def _nome_categoria_dal_corpo(self):
+        payload = self._leggi_json()
+        if payload is None:
+            self._json(400, {"errori": ["Richiesta non leggibile."]})
+            return None
+
+        nome, errori = valida_nome_categoria(payload)
+        if errori:
+            self._json(400, {"errori": errori})
+            return None
+        return nome
 
     def _spesa_dal_corpo(self):
         """Legge e valida il corpo della richiesta; risponde da sé in caso di errore."""

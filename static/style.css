@@ -189,6 +189,66 @@ tr.in-modifica {
   background: color-mix(in srgb, var(--accento) 12%, transparent);
 }
 
+.gestione {
+  padding: 0.5rem 1.25rem;
+}
+
+.gestione summary {
+  padding: 0.6rem 0;
+  color: var(--testo-tenue);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.gestione summary:hover {
+  color: var(--testo);
+}
+
+.riga-aggiunta {
+  display: flex;
+  gap: 0.6rem;
+  margin: 0.5rem 0 1rem;
+}
+
+.riga-aggiunta button {
+  padding: 0.55rem 1.1rem;
+  background: var(--accento);
+  color: var(--accento-testo);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.elenco-categorie {
+  margin: 0 0 1rem;
+  padding: 0;
+  list-style: none;
+}
+
+.elenco-categorie li {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+  border-top: 1px solid var(--bordo);
+}
+
+.nome-categoria {
+  flex: 1;
+  min-width: 0;
+}
+
+.usi-categoria {
+  color: var(--testo-tenue);
+  font-size: 0.85rem;
+}
+
+.campo-rinomina {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+}
+
 dialog {
   max-width: 26rem;
   padding: 1.5rem;
