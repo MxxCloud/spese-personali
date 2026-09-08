@@ -26,6 +26,17 @@ const scorciatoie = document.querySelector(".scorciatoie");
 const esportazioni = document.getElementById("esportazioni");
 const esportaExcel = document.getElementById("esporta-excel");
 const esportaStandard = document.getElementById("esporta-standard");
+const includiFisse = document.getElementById("includi-fisse");
+const scomposizione = document.getElementById("scomposizione");
+const formFissa = document.getElementById("form-fissa");
+const fissaDescrizione = document.getElementById("fissa-descrizione");
+const fissaImporto = document.getElementById("fissa-importo");
+const fissaCategoria = document.getElementById("fissa-categoria");
+const fissaInizio = document.getElementById("fissa-inizio");
+const fissaFine = document.getElementById("fissa-fine");
+const fissaInvia = document.getElementById("fissa-invia");
+const fissaAnnulla = document.getElementById("fissa-annulla");
+const elencoFisse = document.getElementById("elenco-fisse");
 const kpiMedia = document.getElementById("kpi-media");
 const kpiGiornaliera = document.getElementById("kpi-giornaliera");
 const kpiGiorni = document.getElementById("kpi-giorni");
@@ -52,7 +63,14 @@ function filtriAttivi() {
   if (filtroA.value) parametri.set("a", filtroA.value);
   if (filtroCategoria.value) parametri.set("categoria", filtroCategoria.value);
   if (filtroTesto.value.trim()) parametri.set("testo", filtroTesto.value.trim());
+  if (includiFisse.checked) parametri.set("fisse", "1");
   return parametri;
+}
+
+function filtriSenzaModo(parametri) {
+  const copia = new URLSearchParams(parametri);
+  copia.delete("fisse");
+  return copia;
 }
 
 function impostaPeriodo(periodo) {
@@ -198,6 +216,10 @@ function popolaCategorie(categorie) {
   const selezione = selectCategoria.value;
   selectCategoria.replaceChildren(...opzioniCategoria(categorie));
   if (categorie.includes(selezione)) selectCategoria.value = selezione;
+
+  const selezioneFissa = fissaCategoria.value;
+  fissaCategoria.replaceChildren(...opzioniCategoria(categorie));
+  if (categorie.includes(selezioneFissa)) fissaCategoria.value = selezioneFissa;
 
   const selezioneFiltro = filtroCategoria.value;
   const tutte = document.createElement("option");
@@ -360,6 +382,157 @@ async function caricaRiepilogo() {
   );
 }
 
+let idFissaInModifica = null;
+
+function meseLeggibile(mese) {
+  return meseEsteso.format(new Date(`${mese}-01T00:00:00`));
+}
+
+function periodoLeggibile(fissa) {
+  const dal = `da ${meseLeggibile(fissa.inizio)}`;
+  return fissa.fine ? `${dal} a ${meseLeggibile(fissa.fine)}` : `${dal}, in corso`;
+}
+
+function tornaANuovaFissa() {
+  idFissaInModifica = null;
+  formFissa.reset();
+  fissaInvia.textContent = "Aggiungi spesa fissa";
+  fissaAnnulla.hidden = true;
+}
+
+function iniziaModificaFissa(fissa) {
+  idFissaInModifica = fissa.id;
+  fissaDescrizione.value = fissa.descrizione;
+  fissaImporto.value = fissa.importo;
+  fissaCategoria.value = fissa.categoria;
+  fissaInizio.value = fissa.inizio;
+  fissaFine.value = fissa.fine ?? "";
+  fissaInvia.textContent = "Salva modifiche";
+  fissaAnnulla.hidden = false;
+  mostraErrori([]);
+  formFissa.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+async function eliminaFissa(fissa) {
+  const confermato = await chiediConferma(
+    "Eliminare la spesa fissa?",
+    `${fissa.descrizione} — ${euro.format(fissa.importo)} al mese, ${periodoLeggibile(fissa)}`
+  );
+  if (!confermato) return;
+  if (idFissaInModifica === fissa.id) tornaANuovaFissa();
+  await inviaFissa(`/api/fisse/${fissa.id}`, "DELETE");
+}
+
+function avviaEccezione(voce, fissa) {
+  const mese = document.createElement("input");
+  mese.type = "month";
+  mese.className = "campo-eccezione";
+  mese.value = fissa.inizio;
+
+  const importo = document.createElement("input");
+  importo.type = "number";
+  importo.step = "0.01";
+  importo.min = "0.01";
+  importo.className = "campo-eccezione";
+  importo.placeholder = "importo del mese";
+
+  const salva = () =>
+    inviaFissa(`/api/fisse/${fissa.id}/eccezioni/${mese.value}`, "PUT", {
+      importo: importo.value,
+    });
+
+  const modulo = document.createElement("div");
+  modulo.className = "modulo-eccezione";
+  modulo.append(
+    mese,
+    importo,
+    creaBottone("Salva", "minimo", salva),
+    creaBottone("Annulla", "minimo", caricaFisse)
+  );
+  voce.append(modulo);
+  importo.focus();
+}
+
+function creaVoceEccezione(fissa, eccezione) {
+  const voce = document.createElement("li");
+
+  const testo = document.createElement("span");
+  testo.textContent = `${meseLeggibile(eccezione.mese)}: ${euro.format(eccezione.importo)}`;
+
+  voce.append(
+    testo,
+    creaBottone("Rimuovi", "minimo pericolo", () =>
+      inviaFissa(`/api/fisse/${fissa.id}/eccezioni/${eccezione.mese}`, "DELETE")
+    )
+  );
+  return voce;
+}
+
+function creaVoceFissa(fissa) {
+  const voce = document.createElement("li");
+
+  const nome = document.createElement("span");
+  nome.className = "nome-fissa";
+  nome.textContent = fissa.descrizione;
+
+  const dettaglio = document.createElement("span");
+  dettaglio.className = "dettaglio-fissa";
+  dettaglio.textContent = `${euro.format(fissa.importo)} al mese · ${fissa.categoria} · ${periodoLeggibile(fissa)}`;
+
+  const azioni = document.createElement("span");
+  azioni.className = "azioni";
+  azioni.append(
+    creaBottone("Modifica", "minimo", () => iniziaModificaFissa(fissa)),
+    creaBottone("Mese diverso", "minimo", () => avviaEccezione(voce, fissa)),
+    creaBottone("Elimina", "minimo pericolo", () => eliminaFissa(fissa))
+  );
+
+  const riga = document.createElement("div");
+  riga.className = "riga-fissa";
+  riga.append(nome, dettaglio, azioni);
+  voce.append(riga);
+
+  if (fissa.eccezioni.length) {
+    const eccezioni = document.createElement("ul");
+    eccezioni.className = "eccezioni";
+    eccezioni.replaceChildren(
+      ...fissa.eccezioni.map((eccezione) => creaVoceEccezione(fissa, eccezione))
+    );
+    voce.append(eccezioni);
+  }
+
+  return voce;
+}
+
+async function inviaFissa(url, metodo, corpo) {
+  const opzioni = { method: metodo };
+  if (corpo) {
+    opzioni.headers = { "Content-Type": "application/json" };
+    opzioni.body = JSON.stringify(corpo);
+  }
+
+  const risposta = await fetch(url, opzioni);
+  if (!risposta.ok) {
+    const errore = await risposta.json();
+    mostraErrori(errore.errori ?? ["Errore imprevisto."]);
+    await caricaFisse();
+    return false;
+  }
+
+  mostraErrori([]);
+  await Promise.all([caricaFisse(), caricaCategorie(), carica()]);
+  return true;
+}
+
+async function caricaFisse() {
+  const dati = await fetch("/api/fisse").then((risposta) => risposta.json());
+  elencoFisse.replaceChildren(
+    ...(dati.fisse.length
+      ? dati.fisse.map(creaVoceFissa)
+      : [messaggioAssente("Nessuna spesa fissa registrata.")])
+  );
+}
+
 async function caricaCategorie() {
   const dati = await fetch("/api/categorie").then((risposta) => risposta.json());
   elencoCategorie.replaceChildren(...dati.categorie.map(creaVoceCategoria));
@@ -367,12 +540,18 @@ async function caricaCategorie() {
 
 async function carica() {
   const parametri = filtriAttivi();
-  const filtrato = [...parametri].length > 0;
+  const filtrato = [...filtriSenzaModo(parametri)].length > 0;
   const dati = await fetch(`/api/spese?${parametri}`).then((risposta) => risposta.json());
 
   popolaCategorie(dati.categorie);
   corpoTabella.replaceChildren(...dati.spese.map(creaRiga));
-  totaleEl.textContent = euro.format(dati.totale);
+
+  totaleEl.textContent = euro.format(dati.totale + dati.totale_fisse);
+  scomposizione.hidden = dati.numero_fisse === 0;
+  scomposizione.textContent =
+    `${euro.format(dati.totale)} di spese correnti` +
+    ` + ${euro.format(dati.totale_fisse)} di spese fisse` +
+    ` su ${dati.numero_fisse} mensilità`;
 
   const numero = dati.spese.length;
   const singolare = numero === 1;
@@ -451,8 +630,39 @@ scorciatoie.addEventListener("click", (evento) => {
   carica();
 });
 
+formFissa.addEventListener("submit", async (evento) => {
+  evento.preventDefault();
+
+  const modifica = idFissaInModifica !== null;
+  const riuscito = await inviaFissa(
+    modifica ? `/api/fisse/${idFissaInModifica}` : "/api/fisse",
+    modifica ? "PUT" : "POST",
+    Object.fromEntries(new FormData(formFissa))
+  );
+  if (riuscito) tornaANuovaFissa();
+});
+
+fissaAnnulla.addEventListener("click", tornaANuovaFissa);
+
+includiFisse.addEventListener("change", () => {
+  try {
+    localStorage.setItem("includiFisse", includiFisse.checked ? "1" : "0");
+  } catch {
+    // La preferenza non è essenziale: se il browser blocca l'archiviazione si prosegue.
+  }
+  carica();
+});
+
 bottoneAnnulla.addEventListener("click", tornaANuovaSpesa);
 
+try {
+  includiFisse.checked = localStorage.getItem("includiFisse") !== "0";
+} catch {
+  // Resta il valore predefinito del documento.
+}
+
 tornaANuovaSpesa();
+tornaANuovaFissa();
 carica();
 caricaCategorie();
+caricaFisse();

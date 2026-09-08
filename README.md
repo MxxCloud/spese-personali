@@ -14,6 +14,13 @@ categorie". Rinominare una categoria aggiorna anche le spese collegate, mentre
 eliminarne una ancora in uso viene impedito, così nessuna spesa resta senza
 categoria.
 
+**Spese fisse.** Canoni ricorrenti noti in anticipo (l'affitto, il condominio)
+si registrano una volta sola, con importo mensile, categoria, mese di inizio e
+mese di fine facoltativo. Non compaiono nell'elenco: formano la base su cui si
+sommano le spese occasionali. Per un singolo mese si può registrare un importo
+diverso dal canone. Un interruttore include o esclude le spese fisse da totali,
+riepiloghi ed esportazione, per misurare la spesa corrente in entrambi i modi.
+
 **Filtri.** L'elenco si restringe per intervallo di date, categoria e testo della
 descrizione, con scorciatoie per questo mese, il mese scorso e l'anno corrente.
 

@@ -368,6 +368,105 @@ tr.in-modifica {
   filter: none;
 }
 
+.scomposizione {
+  width: 100%;
+  margin: 0.2rem 0 0;
+  color: var(--testo-tenue);
+  font-size: 0.85rem;
+  text-align: right;
+}
+
+.interruttore {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--testo);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.interruttore input {
+  width: auto;
+  accent-color: var(--accento);
+}
+
+.fisse {
+  display: grid;
+  gap: 1rem;
+  padding: 1.25rem;
+}
+
+.nota-fisse {
+  margin: -0.6rem 0 0;
+  color: var(--testo-tenue);
+  font-size: 0.85rem;
+}
+
+.griglia-fissa {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 1rem;
+  align-items: end;
+}
+
+.elenco-fisse {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.elenco-fisse > li {
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--bordo);
+}
+
+.riga-fissa {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem 0.75rem;
+}
+
+.nome-fissa {
+  font-weight: 600;
+}
+
+.dettaglio-fissa {
+  flex: 1;
+  color: var(--testo-tenue);
+  font-size: 0.85rem;
+}
+
+.eccezioni {
+  margin: 0.4rem 0 0;
+  padding: 0 0 0 1rem;
+  list-style: none;
+}
+
+.eccezioni li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--testo-tenue);
+  font-size: 0.85rem;
+}
+
+.modulo-eccezione {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.campo-eccezione {
+  width: auto;
+  flex: 0 1 11rem;
+}
+
 .esportazioni {
   grid-column: 1 / -1;
   display: flex;
