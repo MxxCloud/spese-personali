@@ -23,6 +23,11 @@ const filtroA = document.getElementById("filtro-a");
 const filtroCategoria = document.getElementById("filtro-categoria");
 const filtroTesto = document.getElementById("filtro-testo");
 const scorciatoie = document.querySelector(".scorciatoie");
+const kpiMedia = document.getElementById("kpi-media");
+const kpiGiornaliera = document.getElementById("kpi-giornaliera");
+const kpiGiorni = document.getElementById("kpi-giorni");
+const graficoCategorie = document.getElementById("grafico-categorie");
+const graficoMesi = document.getElementById("grafico-mesi");
 
 const euro = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" });
 const giorno = new Intl.DateTimeFormat("it-IT", { day: "2-digit", month: "2-digit", year: "numeric" });
@@ -273,6 +278,85 @@ async function inviaCategoria(url, metodo, corpo) {
   return true;
 }
 
+const percentuale = new Intl.NumberFormat("it-IT", { style: "percent", maximumFractionDigits: 0 });
+const meseEsteso = new Intl.DateTimeFormat("it-IT", { month: "short", year: "numeric" });
+
+function creaBarraCategoria(voce, massimo) {
+  const riga = document.createElement("li");
+
+  const etichetta = document.createElement("span");
+  etichetta.className = "etichetta-barra";
+  etichetta.textContent = voce.categoria;
+
+  const traccia = document.createElement("span");
+  traccia.className = "traccia";
+  const riempimento = document.createElement("span");
+  riempimento.className = "riempimento";
+  riempimento.style.width = `${massimo ? (voce.totale / massimo) * 100 : 0}%`;
+  traccia.append(riempimento);
+
+  const valore = document.createElement("span");
+  valore.className = "valore-barra";
+  valore.textContent = `${euro.format(voce.totale)} · ${percentuale.format(voce.quota)}`;
+
+  riga.append(etichetta, traccia, valore);
+  return riga;
+}
+
+function creaColonnaMese(voce, massimo) {
+  const colonna = document.createElement("li");
+
+  const valore = document.createElement("span");
+  valore.className = "valore-colonna";
+  valore.textContent = euro.format(voce.totale);
+
+  const asta = document.createElement("span");
+  asta.className = "asta";
+  asta.style.height = `${massimo ? (voce.totale / massimo) * 100 : 0}%`;
+
+  const contenitore = document.createElement("span");
+  contenitore.className = "contenitore-asta";
+  contenitore.append(asta);
+
+  const etichetta = document.createElement("span");
+  etichetta.className = "etichetta-colonna";
+  etichetta.textContent = meseEsteso.format(new Date(`${voce.mese}-01T00:00:00`));
+
+  colonna.append(valore, contenitore, etichetta);
+  return colonna;
+}
+
+function messaggioAssente(testo) {
+  const voce = document.createElement("li");
+  voce.className = "senza-dati";
+  voce.textContent = testo;
+  return voce;
+}
+
+async function caricaRiepilogo() {
+  const dati = await fetch(`/api/riepilogo?${filtriAttivi()}`).then((r) => r.json());
+
+  kpiMedia.textContent = dati.numero ? euro.format(dati.media) : "—";
+  kpiGiornaliera.textContent = dati.numero ? euro.format(dati.media_giornaliera) : "—";
+  kpiGiorni.textContent = dati.numero
+    ? `${dati.giorni} ${dati.giorni === 1 ? "giorno" : "giorni"}`
+    : "—";
+
+  const massimoCategoria = Math.max(0, ...dati.per_categoria.map((v) => v.totale));
+  graficoCategorie.replaceChildren(
+    ...(dati.per_categoria.length
+      ? dati.per_categoria.map((voce) => creaBarraCategoria(voce, massimoCategoria))
+      : [messaggioAssente("Nessuna spesa da riepilogare.")])
+  );
+
+  const massimoMese = Math.max(0, ...dati.per_mese.map((v) => v.totale));
+  graficoMesi.replaceChildren(
+    ...(dati.per_mese.length
+      ? dati.per_mese.map((voce) => creaColonnaMese(voce, massimoMese))
+      : [messaggioAssente("Nessuna spesa da riepilogare.")])
+  );
+}
+
 async function caricaCategorie() {
   const dati = await fetch("/api/categorie").then((risposta) => risposta.json());
   elencoCategorie.replaceChildren(...dati.categorie.map(creaVoceCategoria));
@@ -304,6 +388,8 @@ async function carica() {
   if (idInModifica !== null) {
     document.getElementById(`spesa-${idInModifica}`)?.classList.add("in-modifica");
   }
+
+  await caricaRiepilogo();
 }
 
 form.addEventListener("submit", async (evento) => {

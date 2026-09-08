@@ -167,6 +167,69 @@ def elimina_spesa(id_spesa):
         return conn.execute("DELETE FROM spese WHERE id = ?", (id_spesa,)).rowcount > 0
 
 
+def riepilogo(filtri=None):
+    """Aggregati sulle spese che superano i filtri: per categoria e per mese."""
+    filtri = filtri or {}
+    dove, parametri = condizioni_filtro(filtri)
+
+    with apri_db() as conn:
+        totali = conn.execute(
+            "SELECT COUNT(*) AS numero, COALESCE(SUM(importo_cent), 0) AS somma,"
+            f" MIN(data) AS prima, MAX(data) AS ultima FROM spese{dove}",
+            parametri,
+        ).fetchone()
+
+        per_categoria = conn.execute(
+            "SELECT categoria, SUM(importo_cent) AS somma"
+            f" FROM spese{dove} GROUP BY categoria ORDER BY somma DESC",
+            parametri,
+        ).fetchall()
+
+        per_mese = conn.execute(
+            "SELECT substr(data, 1, 7) AS mese, SUM(importo_cent) AS somma"
+            f" FROM spese{dove} GROUP BY mese ORDER BY mese",
+            parametri,
+        ).fetchall()
+
+    numero = totali["numero"]
+    somma = totali["somma"]
+    giorni = giorni_coperti(filtri, totali)
+
+    return {
+        "totale": somma / 100,
+        "numero": numero,
+        "media": (somma / numero / 100) if numero else 0,
+        "media_giornaliera": somma / 100 / giorni,
+        "giorni": giorni,
+        "per_categoria": [
+            {
+                "categoria": riga["categoria"],
+                "totale": riga["somma"] / 100,
+                "quota": riga["somma"] / somma if somma else 0,
+            }
+            for riga in per_categoria
+        ],
+        "per_mese": [
+            {"mese": riga["mese"], "totale": riga["somma"] / 100} for riga in per_mese
+        ],
+    }
+
+
+def giorni_coperti(filtri, totali):
+    """Ampiezza in giorni del periodo osservato, mai inferiore a 1.
+
+    Con un intervallo impostato conta i giorni richiesti, altrimenti quelli
+    effettivamente coperti dalle spese: una media giornaliera calcolata su un
+    periodo diverso da quello mostrato sarebbe fuorviante.
+    """
+    inizio = filtri.get("da") or totali["prima"]
+    fine = filtri.get("a") or totali["ultima"]
+    if not inizio or not fine:
+        return 1
+    ampiezza = (date.fromisoformat(fine) - date.fromisoformat(inizio)).days + 1
+    return max(ampiezza, 1)
+
+
 def elenca_categorie():
     with apri_db() as conn:
         righe = conn.execute(
@@ -306,6 +369,8 @@ class Gestore(BaseHTTPRequestHandler):
                     "categorie": [c["nome"] for c in elenca_categorie()],
                 },
             )
+        elif indirizzo.path == "/api/riepilogo":
+            self._json(200, riepilogo(filtri_da_query(indirizzo.query)))
         elif indirizzo.path == "/api/categorie":
             self._json(200, {"categorie": elenca_categorie()})
         elif indirizzo.path in RISORSE_STATICHE:

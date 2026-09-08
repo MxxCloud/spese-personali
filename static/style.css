@@ -189,6 +189,156 @@ tr.in-modifica {
   background: color-mix(in srgb, var(--accento) 12%, transparent);
 }
 
+.riepilogo {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.kpi,
+.grafici {
+  display: grid;
+  gap: 1rem;
+}
+
+.kpi {
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+}
+
+.grafici {
+  grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr));
+}
+
+.tessera {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 1rem 1.25rem;
+}
+
+.etichetta-kpi {
+  color: var(--testo-tenue);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.valore-kpi {
+  font-size: 1.5rem;
+}
+
+.grafico {
+  padding: 1.25rem;
+}
+
+.grafico h2 {
+  margin: 0 0 1rem;
+  color: var(--testo-tenue);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.barre {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.barre li {
+  display: grid;
+  grid-template-columns: minmax(5rem, 8rem) 1fr auto;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.9rem;
+}
+
+.etichetta-barra {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.traccia {
+  height: 10px;
+  border-radius: 5px;
+  background: var(--sfondo);
+}
+
+.riempimento {
+  display: block;
+  height: 100%;
+  min-width: 3px;
+  border-radius: 5px;
+  background: var(--accento);
+}
+
+.valore-barra {
+  color: var(--testo-tenue);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.area-colonne {
+  overflow-x: auto;
+}
+
+.colonne {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.colonne li {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 4.5rem;
+}
+
+.valore-colonna {
+  color: var(--testo-tenue);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.contenitore-asta {
+  display: flex;
+  align-items: flex-end;
+  width: 100%;
+  height: 120px;
+  border-bottom: 1px solid var(--bordo);
+}
+
+.asta {
+  width: 100%;
+  min-height: 3px;
+  border-radius: 4px 4px 0 0;
+  background: var(--accento);
+}
+
+.etichetta-colonna {
+  color: var(--testo-tenue);
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.senza-dati {
+  color: var(--testo-tenue);
+  font-size: 0.9rem;
+}
+
 .filtri {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
