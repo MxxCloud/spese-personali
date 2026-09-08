@@ -189,6 +189,40 @@ tr.in-modifica {
   background: color-mix(in srgb, var(--accento) 12%, transparent);
 }
 
+.filtri {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 1rem;
+  align-items: end;
+  padding: 1.25rem;
+}
+
+.scorciatoie {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.scorciatoie button {
+  padding: 0.4rem 0.85rem;
+  border: 1px solid var(--bordo);
+  background: transparent;
+  color: var(--testo-tenue);
+  font-size: 0.85rem;
+}
+
+.scorciatoie button:hover {
+  border-color: var(--accento);
+  color: var(--testo);
+  filter: none;
+}
+
+.conteggio {
+  color: var(--testo-tenue);
+  font-size: 0.85rem;
+}
+
 .gestione {
   padding: 0.5rem 1.25rem;
 }

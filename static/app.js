@@ -17,16 +17,56 @@ const dettaglioConferma = document.getElementById("dettaglio-conferma");
 const formCategoria = document.getElementById("form-categoria");
 const campoNuovaCategoria = document.getElementById("nuova-categoria");
 const elencoCategorie = document.getElementById("elenco-categorie");
+const conteggioEl = document.getElementById("conteggio");
+const filtroDa = document.getElementById("filtro-da");
+const filtroA = document.getElementById("filtro-a");
+const filtroCategoria = document.getElementById("filtro-categoria");
+const filtroTesto = document.getElementById("filtro-testo");
+const scorciatoie = document.querySelector(".scorciatoie");
 
 const euro = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" });
 const giorno = new Intl.DateTimeFormat("it-IT", { day: "2-digit", month: "2-digit", year: "numeric" });
 
 let idInModifica = null;
 
+function isoLocale(data) {
+  const scostamento = data.getTimezoneOffset() * 60000;
+  return new Date(data - scostamento).toISOString().slice(0, 10);
+}
+
 function oggiLocale() {
+  return isoLocale(new Date());
+}
+
+function filtriAttivi() {
+  const parametri = new URLSearchParams();
+  if (filtroDa.value) parametri.set("da", filtroDa.value);
+  if (filtroA.value) parametri.set("a", filtroA.value);
+  if (filtroCategoria.value) parametri.set("categoria", filtroCategoria.value);
+  if (filtroTesto.value.trim()) parametri.set("testo", filtroTesto.value.trim());
+  return parametri;
+}
+
+function impostaPeriodo(periodo) {
   const adesso = new Date();
-  const scostamento = adesso.getTimezoneOffset() * 60000;
-  return new Date(adesso - scostamento).toISOString().slice(0, 10);
+  const anno = adesso.getFullYear();
+  const mese = adesso.getMonth();
+
+  if (periodo === "azzera") {
+    filtroDa.value = "";
+    filtroA.value = "";
+    filtroCategoria.value = "";
+    filtroTesto.value = "";
+  } else if (periodo === "mese") {
+    filtroDa.value = isoLocale(new Date(anno, mese, 1));
+    filtroA.value = isoLocale(new Date(anno, mese + 1, 0));
+  } else if (periodo === "mese-scorso") {
+    filtroDa.value = isoLocale(new Date(anno, mese - 1, 1));
+    filtroA.value = isoLocale(new Date(anno, mese, 0));
+  } else if (periodo === "anno") {
+    filtroDa.value = isoLocale(new Date(anno, 0, 1));
+    filtroA.value = isoLocale(new Date(anno, 11, 31));
+  }
 }
 
 function mostraErrori(messaggi) {
@@ -137,17 +177,26 @@ function creaRiga(spesa) {
   return riga;
 }
 
+function opzioniCategoria(categorie) {
+  return categorie.map((categoria) => {
+    const opzione = document.createElement("option");
+    opzione.value = categoria;
+    opzione.textContent = categoria;
+    return opzione;
+  });
+}
+
 function popolaCategorie(categorie) {
   const selezione = selectCategoria.value;
-  selectCategoria.replaceChildren(
-    ...categorie.map((categoria) => {
-      const opzione = document.createElement("option");
-      opzione.value = categoria;
-      opzione.textContent = categoria;
-      return opzione;
-    })
-  );
+  selectCategoria.replaceChildren(...opzioniCategoria(categorie));
   if (categorie.includes(selezione)) selectCategoria.value = selezione;
+
+  const selezioneFiltro = filtroCategoria.value;
+  const tutte = document.createElement("option");
+  tutte.value = "";
+  tutte.textContent = "Tutte";
+  filtroCategoria.replaceChildren(tutte, ...opzioniCategoria(categorie));
+  if (categorie.includes(selezioneFiltro)) filtroCategoria.value = selezioneFiltro;
 }
 
 function creaVoceCategoria(categoria) {
@@ -230,15 +279,27 @@ async function caricaCategorie() {
 }
 
 async function carica() {
-  const dati = await fetch("/api/spese").then((risposta) => risposta.json());
+  const parametri = filtriAttivi();
+  const filtrato = [...parametri].length > 0;
+  const dati = await fetch(`/api/spese?${parametri}`).then((risposta) => risposta.json());
 
   popolaCategorie(dati.categorie);
   corpoTabella.replaceChildren(...dati.spese.map(creaRiga));
   totaleEl.textContent = euro.format(dati.totale);
 
-  const senzaSpese = dati.spese.length === 0;
+  const numero = dati.spese.length;
+  const singolare = numero === 1;
+  conteggioEl.textContent = numero
+    ? `su ${numero} ${singolare ? "spesa" : "spese"}` +
+      (filtrato ? (singolare ? " filtrata" : " filtrate") : "")
+    : "";
+
+  const senzaSpese = numero === 0;
   tabella.hidden = senzaSpese;
   vuotoEl.hidden = !senzaSpese;
+  vuotoEl.textContent = filtrato
+    ? "Nessuna spesa corrisponde ai filtri impostati."
+    : "Nessuna spesa registrata finora.";
 
   if (idInModifica !== null) {
     document.getElementById(`spesa-${idInModifica}`)?.classList.add("in-modifica");
@@ -272,6 +333,23 @@ formCategoria.addEventListener("submit", async (evento) => {
     nome: campoNuovaCategoria.value,
   });
   if (riuscito) formCategoria.reset();
+});
+
+for (const campo of [filtroDa, filtroA, filtroCategoria]) {
+  campo.addEventListener("change", carica);
+}
+
+let attesaRicerca;
+filtroTesto.addEventListener("input", () => {
+  clearTimeout(attesaRicerca);
+  attesaRicerca = setTimeout(carica, 250);
+});
+
+scorciatoie.addEventListener("click", (evento) => {
+  const periodo = evento.target.dataset.periodo;
+  if (!periodo) return;
+  impostaPeriodo(periodo);
+  carica();
 });
 
 bottoneAnnulla.addEventListener("click", tornaANuovaSpesa);

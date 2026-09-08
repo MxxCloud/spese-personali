@@ -6,6 +6,7 @@ import sqlite3
 from datetime import date
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from urllib.parse import parse_qs, urlparse
 
 BASE_DIR = Path(__file__).resolve().parent
 DB_PATH = BASE_DIR / "spese.db"
@@ -62,11 +63,61 @@ def inizializza_db():
         )
 
 
-def elenca_spese():
+def filtri_da_query(query):
+    """Estrae i filtri dalla query string, scartando i valori non validi."""
+    parametri = parse_qs(query)
+
+    def primo(nome):
+        valori = parametri.get(nome, [])
+        return valori[0].strip() if valori else ""
+
+    filtri = {}
+    for chiave in ("da", "a"):
+        try:
+            filtri[chiave] = date.fromisoformat(primo(chiave)).isoformat()
+        except ValueError:
+            pass
+
+    if categoria := primo("categoria"):
+        filtri["categoria"] = categoria
+    if testo := primo("testo"):
+        filtri["testo"] = testo[:100]
+
+    return filtri
+
+
+def condizioni_filtro(filtri):
+    """Traduce i filtri in clausole SQL e relativi parametri."""
+    clausole = []
+    parametri = []
+
+    if filtri.get("da"):
+        clausole.append("data >= ?")
+        parametri.append(filtri["da"])
+    if filtri.get("a"):
+        clausole.append("data <= ?")
+        parametri.append(filtri["a"])
+    if filtri.get("categoria"):
+        clausole.append("categoria = ?")
+        parametri.append(filtri["categoria"])
+    if filtri.get("testo"):
+        # I caratteri jolly di LIKE vanno neutralizzati: qui sono testo cercato.
+        termine = (
+            filtri["testo"].replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        )
+        clausole.append("descrizione LIKE ? ESCAPE '\\'")
+        parametri.append(f"%{termine}%")
+
+    return (" WHERE " + " AND ".join(clausole) if clausole else ""), parametri
+
+
+def elenca_spese(filtri=None):
+    dove, parametri = condizioni_filtro(filtri or {})
     with apri_db() as conn:
         righe = conn.execute(
             "SELECT id, data, importo_cent, categoria, descrizione"
-            " FROM spese ORDER BY data, id"
+            f" FROM spese{dove} ORDER BY data, id",
+            parametri,
         ).fetchall()
     return [
         {
@@ -243,21 +294,22 @@ class Gestore(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
 
     def do_GET(self):
-        if self.path == "/api/spese":
-            spese = elenca_spese()
-            categorie = elenca_categorie()
+        indirizzo = urlparse(self.path)
+
+        if indirizzo.path == "/api/spese":
+            spese = elenca_spese(filtri_da_query(indirizzo.query))
             self._json(
                 200,
                 {
                     "spese": spese,
                     "totale": round(sum(s["importo"] for s in spese), 2),
-                    "categorie": [c["nome"] for c in categorie],
+                    "categorie": [c["nome"] for c in elenca_categorie()],
                 },
             )
-        elif self.path == "/api/categorie":
+        elif indirizzo.path == "/api/categorie":
             self._json(200, {"categorie": elenca_categorie()})
-        elif self.path in RISORSE_STATICHE:
-            self._statico(*RISORSE_STATICHE[self.path])
+        elif indirizzo.path in RISORSE_STATICHE:
+            self._statico(*RISORSE_STATICHE[indirizzo.path])
         else:
             self._non_trovato()
 
