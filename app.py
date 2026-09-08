@@ -1,6 +1,7 @@
 """Server locale del tracker di spese personali."""
 
 import json
+import re
 import sqlite3
 from datetime import date
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -15,6 +16,8 @@ PORT = 8000
 
 CATEGORIE = ("Alimentari", "Casa", "Trasporti", "Salute", "Svago", "Altro")
 IMPORTO_MASSIMO = 1_000_000
+
+PERCORSO_SPESA = re.compile(r"^/api/spese/(\d+)$")
 
 RISORSE_STATICHE = {
     "/": ("index.html", "text/html; charset=utf-8"),
@@ -73,6 +76,27 @@ def aggiungi_spesa(spesa):
             ),
         )
         return cursore.lastrowid
+
+
+def aggiorna_spesa(id_spesa, spesa):
+    with apri_db() as conn:
+        cursore = conn.execute(
+            "UPDATE spese SET data = ?, importo_cent = ?, categoria = ?, descrizione = ?"
+            " WHERE id = ?",
+            (
+                spesa["data"],
+                spesa["importo_cent"],
+                spesa["categoria"],
+                spesa["descrizione"],
+                id_spesa,
+            ),
+        )
+        return cursore.rowcount > 0
+
+
+def elimina_spesa(id_spesa):
+    with apri_db() as conn:
+        return conn.execute("DELETE FROM spese WHERE id = ?", (id_spesa,)).rowcount > 0
 
 
 def valida(payload):
@@ -135,24 +159,56 @@ class Gestore(BaseHTTPRequestHandler):
         elif self.path in RISORSE_STATICHE:
             self._statico(*RISORSE_STATICHE[self.path])
         else:
-            self._json(404, {"errori": ["Risorsa non trovata."]})
+            self._non_trovato()
 
     def do_POST(self):
         if self.path != "/api/spese":
-            self._json(404, {"errori": ["Risorsa non trovata."]})
+            self._non_trovato()
             return
 
+        spesa = self._spesa_dal_corpo()
+        if spesa is not None:
+            self._json(201, {"id": aggiungi_spesa(spesa)})
+
+    def do_PUT(self):
+        corrispondenza = PERCORSO_SPESA.match(self.path)
+        if not corrispondenza:
+            self._non_trovato()
+            return
+
+        spesa = self._spesa_dal_corpo()
+        if spesa is None:
+            return
+
+        if aggiorna_spesa(int(corrispondenza.group(1)), spesa):
+            self._json(200, {"ok": True})
+        else:
+            self._non_trovato("La spesa da modificare non esiste.")
+
+    def do_DELETE(self):
+        corrispondenza = PERCORSO_SPESA.match(self.path)
+        if not corrispondenza:
+            self._non_trovato()
+        elif elimina_spesa(int(corrispondenza.group(1))):
+            self._json(200, {"ok": True})
+        else:
+            self._non_trovato("La spesa da eliminare non esiste.")
+
+    def _spesa_dal_corpo(self):
+        """Legge e valida il corpo della richiesta; risponde da sé in caso di errore."""
         payload = self._leggi_json()
         if payload is None:
             self._json(400, {"errori": ["Richiesta non leggibile."]})
-            return
+            return None
 
         spesa, errori = valida(payload)
         if errori:
             self._json(400, {"errori": errori})
-            return
+            return None
+        return spesa
 
-        self._json(201, {"id": aggiungi_spesa(spesa)})
+    def _non_trovato(self, messaggio="Risorsa non trovata."):
+        self._json(404, {"errori": [messaggio]})
 
     def _leggi_json(self):
         lunghezza = int(self.headers.get("Content-Length") or 0)

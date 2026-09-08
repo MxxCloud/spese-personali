@@ -14,6 +14,7 @@
     </header>
 
     <form id="form-spesa" class="scheda" novalidate>
+      <p id="titolo-form" class="titolo-form">Nuova spesa</p>
       <div class="campo">
         <label for="data">Data</label>
         <input type="date" id="data" name="data" required>
@@ -30,7 +31,10 @@
         <label for="descrizione">Descrizione</label>
         <input type="text" id="descrizione" name="descrizione" maxlength="200" placeholder="facoltativa">
       </div>
-      <button type="submit">Aggiungi spesa</button>
+      <div class="azioni-form">
+        <button type="submit" id="bottone-invia">Aggiungi spesa</button>
+        <button type="button" id="bottone-annulla" class="secondario" hidden>Annulla</button>
+      </div>
     </form>
 
     <ul id="errori" class="errori" hidden></ul>
@@ -42,6 +46,7 @@
           <th>Categoria</th>
           <th>Descrizione</th>
           <th class="num">Importo</th>
+          <th><span class="etichetta-nascosta">Azioni</span></th>
         </tr>
       </thead>
       <tbody id="corpo-tabella"></tbody>
@@ -49,6 +54,17 @@
 
     <p id="vuoto" class="vuoto" hidden>Nessuna spesa registrata finora.</p>
   </main>
+
+  <dialog id="dialogo-conferma">
+    <form method="dialog">
+      <h2>Eliminare la spesa?</h2>
+      <p id="dettaglio-conferma"></p>
+      <div class="azioni-dialogo">
+        <button value="annulla" class="secondario">Annulla</button>
+        <button value="conferma" class="distruttivo">Elimina</button>
+      </div>
+    </form>
+  </dialog>
 
   <script src="/app.js"></script>
 </body>

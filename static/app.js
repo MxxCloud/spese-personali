@@ -1,14 +1,23 @@
 const form = document.getElementById("form-spesa");
+const titoloForm = document.getElementById("titolo-form");
 const campoData = document.getElementById("data");
+const campoImporto = document.getElementById("importo");
+const campoDescrizione = document.getElementById("descrizione");
 const selectCategoria = document.getElementById("categoria");
+const bottoneInvia = document.getElementById("bottone-invia");
+const bottoneAnnulla = document.getElementById("bottone-annulla");
 const corpoTabella = document.getElementById("corpo-tabella");
 const tabella = document.getElementById("tabella");
 const elencoErrori = document.getElementById("errori");
 const totaleEl = document.getElementById("totale");
 const vuotoEl = document.getElementById("vuoto");
+const dialogoConferma = document.getElementById("dialogo-conferma");
+const dettaglioConferma = document.getElementById("dettaglio-conferma");
 
 const euro = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" });
 const giorno = new Intl.DateTimeFormat("it-IT", { day: "2-digit", month: "2-digit", year: "numeric" });
+
+let idInModifica = null;
 
 function oggiLocale() {
   const adesso = new Date();
@@ -27,10 +36,79 @@ function mostraErrori(messaggi) {
   elencoErrori.hidden = messaggi.length === 0;
 }
 
+function tornaANuovaSpesa() {
+  idInModifica = null;
+  form.reset();
+  campoData.value = oggiLocale();
+  titoloForm.textContent = "Nuova spesa";
+  bottoneInvia.textContent = "Aggiungi spesa";
+  bottoneAnnulla.hidden = true;
+  document.querySelector("tr.in-modifica")?.classList.remove("in-modifica");
+}
+
+function iniziaModifica(spesa) {
+  idInModifica = spesa.id;
+  campoData.value = spesa.data;
+  campoImporto.value = spesa.importo;
+  selectCategoria.value = spesa.categoria;
+  campoDescrizione.value = spesa.descrizione;
+  titoloForm.textContent = "Modifica spesa";
+  bottoneInvia.textContent = "Salva modifiche";
+  bottoneAnnulla.hidden = false;
+  mostraErrori([]);
+
+  document.querySelector("tr.in-modifica")?.classList.remove("in-modifica");
+  document.getElementById(`spesa-${spesa.id}`)?.classList.add("in-modifica");
+  form.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+function chiediConferma(dettaglio) {
+  dettaglioConferma.textContent = dettaglio;
+  dialogoConferma.showModal();
+  return new Promise((risolvi) => {
+    dialogoConferma.addEventListener(
+      "close",
+      () => risolvi(dialogoConferma.returnValue === "conferma"),
+      { once: true }
+    );
+  });
+}
+
+async function eliminaSpesa(spesa) {
+  const descrizione = spesa.descrizione ? ` — ${spesa.descrizione}` : "";
+  const confermato = await chiediConferma(
+    `${giorno.format(dataLocale(spesa.data))}, ${spesa.categoria}, ${euro.format(spesa.importo)}${descrizione}`
+  );
+  if (!confermato) return;
+
+  const risposta = await fetch(`/api/spese/${spesa.id}`, { method: "DELETE" });
+  if (!risposta.ok) {
+    mostraErrori(["Non è stato possibile eliminare la spesa."]);
+    return;
+  }
+  if (idInModifica === spesa.id) tornaANuovaSpesa();
+  await carica();
+}
+
+function dataLocale(iso) {
+  return new Date(`${iso}T00:00:00`);
+}
+
+function creaBottone(testo, classe, azione) {
+  const bottone = document.createElement("button");
+  bottone.type = "button";
+  bottone.className = classe;
+  bottone.textContent = testo;
+  bottone.addEventListener("click", azione);
+  return bottone;
+}
+
 function creaRiga(spesa) {
   const riga = document.createElement("tr");
+  riga.id = `spesa-${spesa.id}`;
+
   const valori = [
-    giorno.format(new Date(`${spesa.data}T00:00:00`)),
+    giorno.format(dataLocale(spesa.data)),
     spesa.categoria,
     spesa.descrizione || "—",
     euro.format(spesa.importo),
@@ -41,6 +119,15 @@ function creaRiga(spesa) {
     if (indice === valori.length - 1) cella.className = "num";
     riga.append(cella);
   });
+
+  const azioni = document.createElement("td");
+  azioni.className = "azioni";
+  azioni.append(
+    creaBottone("Modifica", "minimo", () => iniziaModifica(spesa)),
+    creaBottone("Elimina", "minimo pericolo", () => eliminaSpesa(spesa))
+  );
+  riga.append(azioni);
+
   return riga;
 }
 
@@ -57,8 +144,7 @@ function popolaCategorie(categorie) {
 }
 
 async function carica() {
-  const risposta = await fetch("/api/spese");
-  const dati = await risposta.json();
+  const dati = await fetch("/api/spese").then((risposta) => risposta.json());
 
   popolaCategorie(dati.categorie);
   corpoTabella.replaceChildren(...dati.spese.map(creaRiga));
@@ -67,13 +153,18 @@ async function carica() {
   const senzaSpese = dati.spese.length === 0;
   tabella.hidden = senzaSpese;
   vuotoEl.hidden = !senzaSpese;
+
+  if (idInModifica !== null) {
+    document.getElementById(`spesa-${idInModifica}`)?.classList.add("in-modifica");
+  }
 }
 
 form.addEventListener("submit", async (evento) => {
   evento.preventDefault();
 
-  const risposta = await fetch("/api/spese", {
-    method: "POST",
+  const modifica = idInModifica !== null;
+  const risposta = await fetch(modifica ? `/api/spese/${idInModifica}` : "/api/spese", {
+    method: modifica ? "PUT" : "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(Object.fromEntries(new FormData(form))),
   });
@@ -85,10 +176,11 @@ form.addEventListener("submit", async (evento) => {
   }
 
   mostraErrori([]);
-  form.reset();
-  campoData.value = oggiLocale();
+  tornaANuovaSpesa();
   await carica();
 });
 
-campoData.value = oggiLocale();
+bottoneAnnulla.addEventListener("click", tornaANuovaSpesa);
+
+tornaANuovaSpesa();
 carica();
