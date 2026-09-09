@@ -635,6 +635,40 @@ includiFisse.addEventListener("change", () => {
 esportaExcel.addEventListener("click", () => scaricaCsv("excel"));
 esportaStandard.addEventListener("click", () => scaricaCsv("standard"));
 
+// --- installazione e funzionamento offline -------------------------------
+
+const bottoneInstalla = document.getElementById("installa");
+let invitoInstallazione = null;
+
+// Il browser offre l'installazione solo quando ritiene la app idonea: fino a
+// quel momento il pulsante resta nascosto, per non proporre un'azione inerte.
+window.addEventListener("beforeinstallprompt", (evento) => {
+  evento.preventDefault();
+  invitoInstallazione = evento;
+  bottoneInstalla.hidden = false;
+});
+
+bottoneInstalla.addEventListener("click", async () => {
+  if (!invitoInstallazione) return;
+  bottoneInstalla.hidden = true;
+  invitoInstallazione.prompt();
+  await invitoInstallazione.userChoice;
+  invitoInstallazione = null;
+});
+
+window.addEventListener("appinstalled", () => {
+  bottoneInstalla.hidden = true;
+  invitoInstallazione = null;
+});
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js").catch(() => {
+      // Senza service worker la app funziona lo stesso, solo non offline.
+    });
+  });
+}
+
 // --- avvio ---------------------------------------------------------------
 
 try {
