@@ -1,7 +1,8 @@
 # Spese personali
 
-Tracker di spese personali: applicazione web che gira in locale, senza dipendenze
-esterne. Usa solo la libreria standard di Python (`http.server` e `sqlite3`).
+Tracker di spese personali: una app web installabile che funziona anche senza
+rete. Non ha server né dipendenze da installare — è HTML, CSS e JavaScript, e i
+dati restano nel dispositivo di chi la usa.
 
 ## Funzionalità
 
@@ -17,32 +18,63 @@ categoria.
 **Spese fisse.** Canoni ricorrenti noti in anticipo (l'affitto, il condominio)
 si registrano una volta sola, con importo mensile, categoria, mese di inizio e
 mese di fine facoltativo. Non compaiono nell'elenco: formano la base su cui si
-sommano le spese occasionali. Per un singolo mese si può registrare un importo
-diverso dal canone. Un interruttore include o esclude le spese fisse da totali,
-riepiloghi ed esportazione, per misurare la spesa corrente in entrambi i modi.
+sommano le spese occasionali, e la sezione mostra quanto ammontano nel mese in
+corso. Per un singolo mese si può registrare un importo diverso dal canone. Un
+interruttore le include o esclude da totali, riepiloghi ed esportazione, per
+misurare la spesa corrente in entrambi i modi.
 
-**Filtri.** L'elenco si restringe per intervallo di date, categoria e testo della
-descrizione, con scorciatoie per questo mese, il mese scorso e l'anno corrente.
+**Filtri.** L'elenco si restringe per intervallo di date, categoria e testo
+della descrizione, con scorciatoie per questo mese, il mese scorso e l'anno
+corrente.
 
 **Riepiloghi.** Media per spesa, media giornaliera e ampiezza del periodo, più i
 totali per categoria e per mese come grafici a barre. Filtri, riepilogo ed
 elenco mostrano sempre la stessa selezione di spese.
 
-**Esportazione CSV.** Le spese si scaricano in due formati: uno per Excel in
-locale italiana (separatore `;`, decimali a virgola, date `gg/mm/aaaa`) e uno
-standard internazionale (separatore `,`, decimali a punto, date `aaaa-mm-gg`)
-per LibreOffice, Fogli Google e strumenti di analisi. L'esportazione contiene
-le spese filtrate: per scaricarle tutte, azzera prima i filtri.
+**Esportazione CSV.** Due formati: uno per Excel in locale italiana (separatore
+`;`, decimali a virgola, date `gg/mm/aaaa`) e uno standard internazionale per
+LibreOffice, Fogli Google e strumenti di analisi. L'esportazione contiene le
+spese filtrate: per scaricarle tutte, azzera prima i filtri.
 
-## Avvio
+**Backup e ripristino.** Un file JSON con l'intero archivio, che si riporta
+dentro quando serve. Il ripristino sostituisce tutto il contenuto e rifiuta il
+file se anche un solo record non è valido.
+
+## Dove stanno i dati
+
+Nell'archivio del browser (IndexedDB), sul singolo dispositivo. Non vengono
+inviati da nessuna parte e nessuno oltre a chi usa il dispositivo può leggerli.
+
+Questo ha due conseguenze:
+
+- **Telefono e computer hanno archivi separati.** Non si sincronizzano: una
+  spesa segnata sul telefono non compare sul computer.
+- **Svuotare i dati del browser cancella tutto.** Il backup è l'unico modo per
+  riaverli, ed è anche il modo per spostarli da un dispositivo all'altro.
+
+## Uso locale
+
+Non basta aprire `index.html` con un doppio clic: il browser blocca i moduli
+JavaScript caricati da file locali. Serve un server statico qualsiasi, per
+esempio:
 
 ```
-python app.py
+python -m http.server 8001
 ```
 
-Poi apri <http://127.0.0.1:8000> nel browser. Per fermare il server: `Ctrl+C`.
+Poi apri <http://127.0.0.1:8001>.
 
-## Dati
+## Struttura
 
-Le spese sono salvate in `spese.db`, un database SQLite creato automaticamente al
-primo avvio nella cartella del progetto. Il file non è tracciato da git.
+| File | Contenuto |
+|---|---|
+| `index.html` | struttura della pagina |
+| `style.css` | aspetto, con tema chiaro e scuro |
+| `dati.js` | archiviazione e regole di calcolo |
+| `app.js` | interfaccia ed eventi |
+| `sw.js` | copia locale per il funzionamento offline |
+| `manifest.webmanifest` | dati per l'installazione |
+
+Modificando i file dell'applicazione va aggiornata anche la costante `VERSIONE`
+in `sw.js`, altrimenti chi ha già visitato la app continua a vedere la copia
+precedente.
