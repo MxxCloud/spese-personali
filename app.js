@@ -724,9 +724,38 @@ bottoneInstalla.addEventListener("click", async () => {
 
   istruzioniInstalla.textContent =
     'Dal menu del browser scegli "Installa app" oppure "Aggiungi a schermata Home". ' +
-    `Se la voce non c'è: funzionamento offline ${statoOffline}.`;
+    `Se la voce non c'è, riporta questa riga: ${await diagnosi()}`;
   istruzioniInstalla.hidden = false;
 });
+
+/** Stato dei requisiti che il browser controlla prima di offrire l'installazione. */
+async function diagnosi() {
+  const voci = [`offline ${statoOffline}`];
+
+  voci.push(
+    navigator.serviceWorker?.controller ? "pagina controllata" : "pagina NON controllata"
+  );
+
+  try {
+    const nomi = await caches.keys();
+    const deposito = nomi.length ? await caches.open(nomi[0]) : null;
+    const quante = deposito ? (await deposito.keys()).length : 0;
+    voci.push(`cache ${nomi.join(",") || "assente"} con ${quante} risorse`);
+  } catch (errore) {
+    voci.push(`cache non leggibile (${errore.name})`);
+  }
+
+  try {
+    const risposta = await fetch("manifest.webmanifest");
+    const manifest = await risposta.json();
+    voci.push(`manifesto ${risposta.status}, ${manifest.icons.length} icone`);
+  } catch (errore) {
+    voci.push(`manifesto non leggibile (${errore.name})`);
+  }
+
+  voci.push(`invito automatico ${invitoInstallazione ? "ricevuto" : "mai arrivato"}`);
+  return voci.join(" · ");
+}
 
 function nascondiSeGiaInstallata() {
   const avviata = window.matchMedia("(display-mode: standalone)").matches;
