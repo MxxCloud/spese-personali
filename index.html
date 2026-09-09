@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Spese personali</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main>
+    <header class="intestazione">
+      <h1>Spese personali</h1>
+      <p class="totale">Totale <strong id="totale">—</strong> <span id="conteggio" class="conteggio"></span></p>
+      <p id="scomposizione" class="scomposizione" hidden></p>
+    </header>
+
+    <form id="form-spesa" class="scheda" novalidate>
+      <p id="titolo-form" class="titolo-form">Nuova spesa</p>
+      <div class="campo">
+        <label for="data">Data</label>
+        <input type="date" id="data" name="data" required>
+      </div>
+      <div class="campo">
+        <label for="importo">Importo (€)</label>
+        <input type="number" id="importo" name="importo" step="0.01" min="0.01" placeholder="0,00" required>
+      </div>
+      <div class="campo">
+        <label for="categoria">Categoria</label>
+        <select id="categoria" name="categoria" required></select>
+      </div>
+      <div class="campo campo-largo">
+        <label for="descrizione">Descrizione</label>
+        <input type="text" id="descrizione" name="descrizione" maxlength="200" placeholder="facoltativa">
+      </div>
+      <div class="azioni-form">
+        <button type="submit" id="bottone-invia">Aggiungi spesa</button>
+        <button type="button" id="bottone-annulla" class="secondario" hidden>Annulla</button>
+      </div>
+    </form>
+
+    <ul id="errori" class="errori" hidden></ul>
+
+    <section class="scheda filtri" aria-label="Filtri">
+      <p class="titolo-form">Filtri</p>
+      <div class="campo">
+        <label for="filtro-da">Dal</label>
+        <input type="date" id="filtro-da">
+      </div>
+      <div class="campo">
+        <label for="filtro-a">Al</label>
+        <input type="date" id="filtro-a">
+      </div>
+      <div class="campo">
+        <label for="filtro-categoria">Categoria</label>
+        <select id="filtro-categoria"></select>
+      </div>
+      <div class="campo campo-largo">
+        <label for="filtro-testo">Cerca nella descrizione</label>
+        <input type="search" id="filtro-testo" placeholder="es. supermercato">
+      </div>
+      <div class="scorciatoie">
+        <button type="button" data-periodo="mese">Questo mese</button>
+        <button type="button" data-periodo="mese-scorso">Mese scorso</button>
+        <button type="button" data-periodo="anno">Quest'anno</button>
+        <button type="button" data-periodo="azzera">Azzera filtri</button>
+      </div>
+      <label class="interruttore campo-largo">
+        <input type="checkbox" id="includi-fisse" checked>
+        <span>Includi le spese fisse nei totali</span>
+      </label>
+      <div id="esportazioni" class="esportazioni">
+        <button type="button" id="esporta-excel" class="esporta">Esporta per Excel</button>
+        <button type="button" id="esporta-standard" class="esporta">Esporta CSV standard</button>
+      </div>
+    </section>
+
+    <section class="riepilogo" aria-label="Riepilogo">
+      <div class="kpi">
+        <div class="scheda tessera">
+          <span class="etichetta-kpi">Media per spesa</span>
+          <strong id="kpi-media" class="valore-kpi">—</strong>
+        </div>
+        <div class="scheda tessera">
+          <span class="etichetta-kpi">Media giornaliera</span>
+          <strong id="kpi-giornaliera" class="valore-kpi">—</strong>
+        </div>
+        <div class="scheda tessera">
+          <span class="etichetta-kpi">Periodo osservato</span>
+          <strong id="kpi-giorni" class="valore-kpi">—</strong>
+        </div>
+      </div>
+
+      <div class="grafici">
+        <div class="scheda grafico">
+          <h2>Spese per categoria</h2>
+          <ul id="grafico-categorie" class="barre"></ul>
+        </div>
+        <div class="scheda grafico">
+          <h2>Spese per mese</h2>
+          <div class="area-colonne">
+            <ul id="grafico-mesi" class="colonne"></ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <table id="tabella" class="scheda">
+      <thead>
+        <tr>
+          <th>Data</th>
+          <th>Categoria</th>
+          <th>Descrizione</th>
+          <th class="num">Importo</th>
+          <th><span class="etichetta-nascosta">Azioni</span></th>
+        </tr>
+      </thead>
+      <tbody id="corpo-tabella"></tbody>
+    </table>
+
+    <p id="vuoto" class="vuoto" hidden>Nessuna spesa registrata finora.</p>
+
+    <section class="scheda fisse" aria-label="Spese fisse">
+      <div class="testa-fisse">
+        <p class="titolo-form">Spese fisse</p>
+        <p class="contatore-mese">
+          <span id="fisse-mese-etichetta" class="etichetta-mese"></span>
+          <strong id="fisse-mese-totale">—</strong>
+        </p>
+      </div>
+      <p class="nota-fisse">
+        Canoni che si ripetono ogni mese. Non compaiono nell'elenco qui sopra:
+        formano la base su cui si sommano le spese occasionali.
+      </p>
+
+      <form id="form-fissa" class="griglia-fissa" novalidate>
+        <div class="campo campo-largo">
+          <label for="fissa-descrizione">Descrizione</label>
+          <input type="text" id="fissa-descrizione" name="descrizione" maxlength="200" placeholder="es. Condominio ordinario">
+        </div>
+        <div class="campo">
+          <label for="fissa-importo">Importo mensile (€)</label>
+          <input type="number" id="fissa-importo" name="importo" step="0.01" min="0.01" placeholder="0,00">
+        </div>
+        <div class="campo">
+          <label for="fissa-categoria">Categoria</label>
+          <select id="fissa-categoria" name="categoria"></select>
+        </div>
+        <div class="campo">
+          <label for="fissa-inizio">Dal mese</label>
+          <input type="month" id="fissa-inizio" name="inizio">
+        </div>
+        <div class="campo">
+          <label for="fissa-fine">Fino al mese</label>
+          <input type="month" id="fissa-fine" name="fine" placeholder="facoltativo">
+        </div>
+        <div class="azioni-form">
+          <button type="submit" id="fissa-invia">Aggiungi spesa fissa</button>
+          <button type="button" id="fissa-annulla" class="secondario" hidden>Annulla</button>
+        </div>
+      </form>
+
+      <ul id="elenco-fisse" class="elenco-fisse"></ul>
+    </section>
+
+    <details class="scheda gestione">
+      <summary>Gestisci categorie</summary>
+      <form id="form-categoria" class="riga-aggiunta" novalidate>
+        <label for="nuova-categoria" class="etichetta-nascosta">Nuova categoria</label>
+        <input type="text" id="nuova-categoria" name="nome" maxlength="40" placeholder="Nome della nuova categoria">
+        <button type="submit">Aggiungi</button>
+      </form>
+      <ul id="elenco-categorie" class="elenco-categorie"></ul>
+    </details>
+  </main>
+
+  <dialog id="dialogo-conferma">
+    <form method="dialog">
+      <h2 id="titolo-conferma">Eliminare la spesa?</h2>
+      <p id="dettaglio-conferma"></p>
+      <div class="azioni-dialogo">
+        <button value="annulla" class="secondario">Annulla</button>
+        <button value="conferma" class="distruttivo">Elimina</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
