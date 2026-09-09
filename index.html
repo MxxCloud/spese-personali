@@ -168,6 +168,24 @@
     </section>
 
     <details class="scheda gestione">
+      <summary>Backup e ripristino</summary>
+      <p class="nota-backup">
+        I dati stanno solo su questo dispositivo: se svuoti i dati del browser
+        o cambi telefono, spariscono. Il backup è l'unico modo per riaverli.
+      </p>
+      <div class="riga-backup">
+        <button type="button" id="scarica-backup">Scarica backup</button>
+        <label class="ripristina">
+          <span>Ripristina da backup</span>
+          <input type="file" id="carica-backup" accept="application/json,.json">
+        </label>
+      </div>
+      <p class="nota-backup avviso">
+        Il ripristino <strong>sostituisce</strong> tutto ciò che è registrato ora.
+      </p>
+    </details>
+
+    <details class="scheda gestione">
       <summary>Gestisci categorie</summary>
       <form id="form-categoria" class="riga-aggiunta" novalidate>
         <label for="nuova-categoria" class="etichetta-nascosta">Nuova categoria</label>

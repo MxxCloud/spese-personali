@@ -466,16 +466,11 @@ function creaColonnaMese(voce, massimo) {
 
 function scaricaCsv(formato) {
   const filtri = filtriAttivi();
-  const testo = dati.speseInCsv(filtri, formato, includiFisse.checked);
-  const indirizzo = URL.createObjectURL(
-    new Blob([testo], { type: "text/csv;charset=utf-8" })
+  scarica(
+    dati.speseInCsv(filtri, formato, includiFisse.checked),
+    dati.nomeFileCsv(filtri),
+    "text/csv;charset=utf-8"
   );
-
-  const collegamento = document.createElement("a");
-  collegamento.href = indirizzo;
-  collegamento.download = dati.nomeFileCsv(filtri);
-  collegamento.click();
-  URL.revokeObjectURL(indirizzo);
 }
 
 // --- disegno complessivo -------------------------------------------------
@@ -634,6 +629,57 @@ includiFisse.addEventListener("change", () => {
 
 esportaExcel.addEventListener("click", () => scaricaCsv("excel"));
 esportaStandard.addEventListener("click", () => scaricaCsv("standard"));
+
+// --- backup e ripristino -------------------------------------------------
+
+const scaricaBackup = document.getElementById("scarica-backup");
+const caricaBackup = document.getElementById("carica-backup");
+
+function scarica(testo, nomeFile, tipo) {
+  const indirizzo = URL.createObjectURL(new Blob([testo], { type: tipo }));
+  const collegamento = document.createElement("a");
+  collegamento.href = indirizzo;
+  collegamento.download = nomeFile;
+  collegamento.click();
+  URL.revokeObjectURL(indirizzo);
+}
+
+scaricaBackup.addEventListener("click", () => {
+  scarica(
+    JSON.stringify(dati.esportaBackup(), null, 2),
+    dati.nomeFileBackup(),
+    "application/json"
+  );
+});
+
+caricaBackup.addEventListener("change", async () => {
+  const file = caricaBackup.files?.[0];
+  if (!file) return;
+
+  const confermato = await chiediConferma(
+    "Ripristinare dal backup?",
+    `«${file.name}» sostituirà tutte le spese, le categorie e le spese fisse registrate ora.`
+  );
+  if (!confermato) {
+    caricaBackup.value = "";
+    return;
+  }
+
+  let contenuto = null;
+  try {
+    contenuto = JSON.parse(await file.text());
+  } catch {
+    mostraErrori(["Il file non è leggibile: non contiene dati in formato JSON."]);
+    caricaBackup.value = "";
+    return;
+  }
+
+  const errori = await dati.importaBackup(contenuto);
+  caricaBackup.value = "";
+  tornaANuovaSpesa();
+  tornaANuovaFissa();
+  await applica(errori);
+});
 
 // --- installazione e funzionamento offline -------------------------------
 

@@ -2,3 +2,7 @@ spese.db
 __pycache__/
 *.pyc
 .claude/
+
+# Contengono spese reali: non devono mai finire nel repository.
+migrazione_*.json
+backup-spese_*.json

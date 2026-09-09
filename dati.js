@@ -575,6 +575,131 @@ export function speseInCsv(filtri = {}, formato = "excel", conFisse = false) {
   return (dialetto.bom ? BOM_UTF8 : "") + testo + "\r\n";
 }
 
+// --- backup completo -----------------------------------------------------
+
+const FORMATO_BACKUP = "spese-personali";
+const VERSIONE_BACKUP = 1;
+
+export function esportaBackup() {
+  return {
+    formato: FORMATO_BACKUP,
+    versione: VERSIONE_BACKUP,
+    esportato: new Date().toISOString(),
+    categorie: memoria.categorie.map((c) => c.nome),
+    spese: memoria.spese.map((s) => ({
+      data: s.data,
+      importo: s.importoCent / 100,
+      categoria: s.categoria,
+      descrizione: s.descrizione,
+    })),
+    fisse: memoria.fisse.map((f) => ({
+      descrizione: f.descrizione,
+      importo: f.importoCent / 100,
+      categoria: f.categoria,
+      inizio: f.inizio,
+      fine: f.fine,
+      eccezioni: Object.fromEntries(
+        Object.entries(f.eccezioni ?? {}).map(([mese, cent]) => [mese, cent / 100])
+      ),
+    })),
+  };
+}
+
+export function nomeFileBackup() {
+  return `backup-spese_${oggiIso()}.json`;
+}
+
+async function svuotaTutto() {
+  const transazione = archivio.transaction(["spese", "categorie", "fisse"], "readwrite");
+  for (const deposito of ["spese", "categorie", "fisse"]) {
+    await richiesta(transazione.objectStore(deposito).clear());
+  }
+  memoria.spese = [];
+  memoria.categorie = [];
+  memoria.fisse = [];
+}
+
+/**
+ * Sostituisce l'intero archivio con il contenuto del backup.
+ * Il file arriva dall'esterno, quindi ogni record passa dalle stesse
+ * validazioni dell'inserimento manuale: restituisce l'elenco degli errori,
+ * e in tal caso non tocca nulla.
+ */
+export async function importaBackup(contenuto) {
+  if (!contenuto || typeof contenuto !== "object") {
+    return ["Il file non contiene un backup leggibile."];
+  }
+  if (contenuto.formato !== FORMATO_BACKUP) {
+    return ["Questo file non è un backup del tracker di spese."];
+  }
+  if (contenuto.versione !== VERSIONE_BACKUP) {
+    return [`Il backup è in versione ${contenuto.versione}, non riconosciuta.`];
+  }
+
+  const categorie = Array.isArray(contenuto.categorie) ? contenuto.categorie : [];
+  const spese = Array.isArray(contenuto.spese) ? contenuto.spese : [];
+  const fisse = Array.isArray(contenuto.fisse) ? contenuto.fisse : [];
+
+  // Le categorie citate dalle voci devono esistere, altrimenti la validazione
+  // le rifiuterebbe: si ricavano dal backup stesso prima di controllare il resto.
+  const nomi = new Set(categorie.map((n) => String(n).trim()).filter(Boolean));
+  for (const voce of [...spese, ...fisse]) {
+    const nome = String(voce?.categoria ?? "").trim();
+    if (nome) nomi.add(nome);
+  }
+
+  const precedenti = memoria.categorie;
+  memoria.categorie = [...nomi].map((nome, indice) => ({ id: -1 - indice, nome }));
+
+  const errori = [];
+  const speseValide = [];
+  spese.forEach((voce, indice) => {
+    const [spesa, suoi] = valida(voce ?? {});
+    if (suoi.length) errori.push(`Spesa ${indice + 1}: ${suoi.join(" ")}`);
+    else speseValide.push(spesa);
+  });
+
+  const fisseValide = [];
+  fisse.forEach((voce, indice) => {
+    const [fissa, suoi] = validaFissa(voce ?? {});
+    if (suoi.length) {
+      errori.push(`Spesa fissa ${indice + 1}: ${suoi.join(" ")}`);
+      return;
+    }
+    const eccezioni = {};
+    for (const [mese, importo] of Object.entries(voce.eccezioni ?? {})) {
+      const meseOk = meseValido(mese);
+      const [cent, errore] = importoInCentesimi(importo);
+      if (!meseOk || errore) {
+        errori.push(`Spesa fissa ${indice + 1}: eccezione «${mese}» non valida.`);
+      } else {
+        eccezioni[meseOk] = cent;
+      }
+    }
+    fisseValide.push({ ...fissa, eccezioni });
+  });
+
+  if (errori.length) {
+    memoria.categorie = precedenti;
+    return errori.slice(0, 10);
+  }
+
+  await svuotaTutto();
+  for (const nome of nomi) {
+    const id = await scrivi("categorie", { nome });
+    memoria.categorie.push({ id, nome });
+  }
+  for (const spesa of speseValide) {
+    const id = await scrivi("spese", spesa);
+    memoria.spese.push({ id, ...spesa });
+  }
+  for (const fissa of fisseValide) {
+    const id = await scrivi("fisse", fissa);
+    memoria.fisse.push({ id, ...fissa });
+  }
+  return [];
+}
+
 export function nomeFileCsv(filtri = {}) {
   if (filtri.da || filtri.a) {
     return `spese_${filtri.da ?? "inizio"}_${filtri.a ?? "oggi"}.csv`;

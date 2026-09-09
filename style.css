@@ -554,6 +554,62 @@ tr.in-modifica {
   color: var(--testo);
 }
 
+.nota-backup {
+  margin: 0 0 0.75rem;
+  color: var(--testo-tenue);
+  font-size: 0.85rem;
+}
+
+.nota-backup.avviso {
+  margin: 0.75rem 0 1rem;
+}
+
+.nota-backup.avviso strong {
+  color: var(--errore);
+}
+
+.riga-backup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.riga-backup button,
+.ripristina span {
+  display: inline-block;
+  padding: 0.55rem 1.1rem;
+  border: 1px solid var(--bordo);
+  border-radius: 7px;
+  color: var(--testo-tenue);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.riga-backup button {
+  background: var(--accento);
+  border-color: var(--accento);
+  color: var(--accento-testo);
+}
+
+.ripristina span:hover,
+.riga-backup button:hover {
+  filter: brightness(1.08);
+}
+
+.ripristina input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.ripristina:focus-within span {
+  outline: 2px solid var(--accento);
+  outline-offset: 2px;
+}
+
 .riga-aggiunta {
   display: flex;
   gap: 0.6rem;
