@@ -120,7 +120,13 @@
     <p id="vuoto" class="vuoto" hidden>Nessuna spesa registrata finora.</p>
 
     <section class="scheda fisse" aria-label="Spese fisse">
-      <p class="titolo-form">Spese fisse</p>
+      <div class="testa-fisse">
+        <p class="titolo-form">Spese fisse</p>
+        <p class="contatore-mese">
+          <span id="fisse-mese-etichetta" class="etichetta-mese"></span>
+          <strong id="fisse-mese-totale">—</strong>
+        </p>
+      </div>
       <p class="nota-fisse">
         Canoni che si ripetono ogni mese. Non compaiono nell'elenco qui sopra:
         formano la base su cui si sommano le spese occasionali.

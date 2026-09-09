@@ -5,7 +5,7 @@ import io
 import json
 import re
 import sqlite3
-from datetime import date
+from datetime import date, timedelta
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -325,6 +325,19 @@ def occorrenze_fisse(filtri=None):
 
     ricorrenze.sort(key=lambda voce: (voce["data"], voce["descrizione"]))
     return ricorrenze
+
+
+def estremi_del_mese(mese):
+    """Primo e ultimo giorno del mese «AAAA-MM», come date ISO."""
+    anno, numero = (int(parte) for parte in mese.split("-"))
+    successivo = date(anno + 1, 1, 1) if numero == 12 else date(anno, numero + 1, 1)
+    return f"{mese}-01", (successivo - timedelta(days=1)).isoformat()
+
+
+def fisse_del_mese(mese):
+    """Ricorrenze fisse di un singolo mese, eccezioni comprese."""
+    primo, ultimo = estremi_del_mese(mese)
+    return occorrenze_fisse({"da": primo, "a": ultimo})
 
 
 def elenca_spese_fisse():
@@ -734,7 +747,17 @@ class Gestore(BaseHTTPRequestHandler):
         elif indirizzo.path == "/api/riepilogo":
             self._json(200, riepilogo(filtri, con_fisse))
         elif indirizzo.path == "/api/fisse":
-            self._json(200, {"fisse": elenca_spese_fisse()})
+            mese = mese_corrente()
+            del_mese = fisse_del_mese(mese)
+            self._json(
+                200,
+                {
+                    "fisse": elenca_spese_fisse(),
+                    "mese_corrente": mese,
+                    "totale_mese": round(sum(v["importo"] for v in del_mese), 2),
+                    "voci_mese": len(del_mese),
+                },
+            )
         elif indirizzo.path == "/api/categorie":
             self._json(200, {"categorie": elenca_categorie()})
         elif indirizzo.path in RISORSE_STATICHE:

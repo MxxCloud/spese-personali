@@ -396,6 +396,31 @@ tr.in-modifica {
   padding: 1.25rem;
 }
 
+.testa-fisse {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+}
+
+.contatore-mese {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.etichetta-mese {
+  color: var(--testo-tenue);
+  font-size: 0.85rem;
+}
+
+.contatore-mese strong {
+  font-size: 1.2rem;
+  font-variant-numeric: tabular-nums;
+}
+
 .nota-fisse {
   margin: -0.6rem 0 0;
   color: var(--testo-tenue);

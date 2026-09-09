@@ -37,6 +37,8 @@ const fissaFine = document.getElementById("fissa-fine");
 const fissaInvia = document.getElementById("fissa-invia");
 const fissaAnnulla = document.getElementById("fissa-annulla");
 const elencoFisse = document.getElementById("elenco-fisse");
+const fisseMeseEtichetta = document.getElementById("fisse-mese-etichetta");
+const fisseMeseTotale = document.getElementById("fisse-mese-totale");
 const kpiMedia = document.getElementById("kpi-media");
 const kpiGiornaliera = document.getElementById("kpi-giornaliera");
 const kpiGiorni = document.getElementById("kpi-giorni");
@@ -526,11 +528,18 @@ async function inviaFissa(url, metodo, corpo) {
 
 async function caricaFisse() {
   const dati = await fetch("/api/fisse").then((risposta) => risposta.json());
+
   elencoFisse.replaceChildren(
     ...(dati.fisse.length
       ? dati.fisse.map(creaVoceFissa)
       : [messaggioAssente("Nessuna spesa fissa registrata.")])
   );
+
+  const voci = dati.voci_mese;
+  fisseMeseEtichetta.textContent = voci
+    ? `${meseLeggibile(dati.mese_corrente)} · ${voci} ${voci === 1 ? "voce attiva" : "voci attive"}`
+    : `${meseLeggibile(dati.mese_corrente)} · nessuna voce attiva`;
+  fisseMeseTotale.textContent = euro.format(dati.totale_mese);
 }
 
 async function caricaCategorie() {
