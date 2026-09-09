@@ -1,7 +1,7 @@
 // Service worker: tiene una copia dell'applicazione per il funzionamento offline.
 // Va aggiornata VERSIONE a ogni pubblicazione, altrimenti la copia vecchia resta.
 
-const VERSIONE = "spese-v3";
+const VERSIONE = "spese-v4";
 
 const RISORSE = [
   "./",
@@ -18,7 +18,10 @@ self.addEventListener("install", (evento) => {
   evento.waitUntil(
     caches
       .open(VERSIONE)
-      .then((deposito) => deposito.addAll(RISORSE))
+      // "reload" salta la cache HTTP: senza, si precaricherebbero copie vecchie.
+      .then((deposito) =>
+        deposito.addAll(RISORSE.map((r) => new Request(r, { cache: "reload" })))
+      )
       .then(() => self.skipWaiting())
   );
 });
@@ -43,7 +46,10 @@ self.addEventListener("fetch", (evento) => {
   }
 
   evento.respondWith(
-    fetch(richiesta)
+    // Senza "no-cache" la richiesta verrebbe soddisfatta dalla cache HTTP del
+    // browser: GitHub Pages dichiara max-age=600, quindi per dieci minuti la
+    // rete non verrebbe mai interpellata e "prima la rete" sarebbe una bugia.
+    fetch(richiesta.url, { cache: "no-cache", credentials: "same-origin" })
       .then((risposta) => {
         if (risposta.ok) {
           const copia = risposta.clone();
