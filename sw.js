@@ -1,7 +1,7 @@
 // Service worker: tiene una copia dell'applicazione per il funzionamento offline.
 // Va aggiornata VERSIONE a ogni pubblicazione, altrimenti la copia vecchia resta.
 
-const VERSIONE = "spese-v1";
+const VERSIONE = "spese-v2";
 
 const RISORSE = [
   "./",

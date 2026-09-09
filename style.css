@@ -58,6 +58,16 @@ h1 {
   letter-spacing: -0.01em;
 }
 
+.istruzioni-installa {
+  width: 100%;
+  margin: 0.4rem 0 0;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--bordo);
+  border-radius: 7px;
+  color: var(--testo-tenue);
+  font-size: 0.85rem;
+}
+
 .installa {
   padding: 0.4rem 0.9rem;
   border: 1px solid var(--accento);

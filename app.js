@@ -684,36 +684,63 @@ caricaBackup.addEventListener("change", async () => {
 // --- installazione e funzionamento offline -------------------------------
 
 const bottoneInstalla = document.getElementById("installa");
+const istruzioniInstalla = document.getElementById("istruzioni-installa");
 let invitoInstallazione = null;
+let statoOffline = "non supportato da questo browser";
 
-// Il browser offre l'installazione solo quando ritiene la app idonea: fino a
-// quel momento il pulsante resta nascosto, per non proporre un'azione inerte.
+// La registrazione va tentata subito: aspettare il caricamento completo la
+// ritarda senza motivo, e il browser valuta l'idoneità all'installazione solo
+// dopo che un service worker è attivo.
+if ("serviceWorker" in navigator) {
+  statoOffline = "registrazione in corso";
+  navigator.serviceWorker
+    .register("./sw.js")
+    .then((registrazione) => {
+      statoOffline = registrazione.active ? "attivo" : "in attivazione";
+    })
+    .catch((errore) => {
+      // L'errore va mostrato: silenziarlo rende impossibile capire perché la
+      // app non risulta installabile né funziona offline.
+      statoOffline = `non riuscita (${errore.message})`;
+    });
+}
+
+// Alcuni browser non lanciano mai l'invito automatico. Il pulsante resta
+// comunque visibile e spiega la strada manuale, invece di sparire in silenzio.
 window.addEventListener("beforeinstallprompt", (evento) => {
   evento.preventDefault();
   invitoInstallazione = evento;
-  bottoneInstalla.hidden = false;
+  istruzioniInstalla.hidden = true;
 });
 
 bottoneInstalla.addEventListener("click", async () => {
-  if (!invitoInstallazione) return;
-  bottoneInstalla.hidden = true;
-  invitoInstallazione.prompt();
-  await invitoInstallazione.userChoice;
-  invitoInstallazione = null;
+  if (invitoInstallazione) {
+    bottoneInstalla.hidden = true;
+    invitoInstallazione.prompt();
+    await invitoInstallazione.userChoice;
+    invitoInstallazione = null;
+    return;
+  }
+
+  istruzioniInstalla.textContent =
+    'Dal menu del browser scegli "Installa app" oppure "Aggiungi a schermata Home". ' +
+    `Se la voce non c'è: funzionamento offline ${statoOffline}.`;
+  istruzioniInstalla.hidden = false;
 });
+
+function nascondiSeGiaInstallata() {
+  const avviata = window.matchMedia("(display-mode: standalone)").matches;
+  bottoneInstalla.hidden = avviata;
+  if (avviata) istruzioniInstalla.hidden = true;
+}
 
 window.addEventListener("appinstalled", () => {
   bottoneInstalla.hidden = true;
+  istruzioniInstalla.hidden = true;
   invitoInstallazione = null;
 });
 
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./sw.js").catch(() => {
-      // Senza service worker la app funziona lo stesso, solo non offline.
-    });
-  });
-}
+nascondiSeGiaInstallata();
 
 // --- avvio ---------------------------------------------------------------
 
