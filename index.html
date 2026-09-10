@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Spese personali</title>
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#2f6f4f">
@@ -15,72 +15,41 @@
     <header class="intestazione">
       <h1>Spese personali</h1>
       <button type="button" id="installa" class="installa">Installa</button>
-      <p class="totale">Totale <strong id="totale">—</strong> <span id="conteggio" class="conteggio"></span></p>
-      <p id="scomposizione" class="scomposizione" hidden></p>
       <p id="istruzioni-installa" class="istruzioni-installa" hidden></p>
     </header>
 
-    <form id="form-spesa" class="scheda" novalidate>
-      <p id="titolo-form" class="titolo-form">Nuova spesa</p>
-      <div class="campo">
-        <label for="data">Data</label>
-        <input type="date" id="data" name="data" required>
-      </div>
-      <div class="campo">
-        <label for="importo">Importo (€)</label>
-        <input type="number" id="importo" name="importo" step="0.01" min="0.01" placeholder="0,00" required>
-      </div>
-      <div class="campo">
-        <label for="categoria">Categoria</label>
-        <select id="categoria" name="categoria" required></select>
-      </div>
-      <div class="campo campo-largo">
-        <label for="descrizione">Descrizione</label>
-        <input type="text" id="descrizione" name="descrizione" maxlength="200" placeholder="facoltativa">
-      </div>
-      <div class="azioni-form">
-        <button type="submit" id="bottone-invia">Aggiungi spesa</button>
-        <button type="button" id="bottone-annulla" class="secondario" hidden>Annulla</button>
-      </div>
-    </form>
-
     <ul id="errori" class="errori" hidden></ul>
 
-    <section class="scheda filtri" aria-label="Filtri">
-      <p class="titolo-form">Filtri</p>
-      <div class="campo">
-        <label for="filtro-da">Dal</label>
-        <input type="date" id="filtro-da">
-      </div>
-      <div class="campo">
-        <label for="filtro-a">Al</label>
-        <input type="date" id="filtro-a">
-      </div>
-      <div class="campo">
-        <label for="filtro-categoria">Categoria</label>
-        <select id="filtro-categoria"></select>
-      </div>
-      <div class="campo campo-largo">
-        <label for="filtro-testo">Cerca nella descrizione</label>
-        <input type="search" id="filtro-testo" placeholder="es. supermercato">
-      </div>
-      <div class="scorciatoie">
-        <button type="button" data-periodo="mese">Questo mese</button>
-        <button type="button" data-periodo="mese-scorso">Mese scorso</button>
-        <button type="button" data-periodo="anno">Quest'anno</button>
-        <button type="button" data-periodo="azzera">Azzera filtri</button>
-      </div>
-      <label class="interruttore campo-largo">
-        <input type="checkbox" id="includi-fisse" checked>
-        <span>Includi le spese fisse nei totali</span>
-      </label>
-      <div id="esportazioni" class="esportazioni">
-        <button type="button" id="esporta-excel" class="esporta">Esporta per Excel</button>
-        <button type="button" id="esporta-standard" class="esporta">Esporta CSV standard</button>
-      </div>
-    </section>
+    <!-- ================= vista: mese ================= -->
+    <section id="vista-mese" class="vista" aria-label="Riepilogo del mese">
 
-    <section class="riepilogo" aria-label="Riepilogo">
+      <div class="scheda cruscotto">
+        <div class="navigatore-mese">
+          <button type="button" id="mese-precedente" class="passo-mese" aria-label="Mese precedente">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5-7 7 7 7"/></svg>
+          </button>
+          <p id="mese-corrente" class="etichetta-mese-grande">—</p>
+          <button type="button" id="mese-successivo" class="passo-mese" aria-label="Mese successivo">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg>
+          </button>
+        </div>
+        <p class="totale-grande"><strong id="totale-mese">—</strong></p>
+        <p id="scomposizione" class="scomposizione"></p>
+      </div>
+
+      <div class="scheda grafico">
+        <h2>Per categoria</h2>
+        <div id="pila-categorie" class="pila" role="img" aria-label="Ripartizione per categoria"></div>
+        <ul id="grafico-categorie" class="barre"></ul>
+      </div>
+
+      <div class="scheda grafico">
+        <h2>Ultimi mesi</h2>
+        <div class="area-colonne">
+          <ul id="grafico-mesi" class="colonne"></ul>
+        </div>
+      </div>
+
       <div class="kpi">
         <div class="scheda tessera">
           <span class="etichetta-kpi">Media per spesa</span>
@@ -96,106 +65,171 @@
         </div>
       </div>
 
-      <div class="grafici">
-        <div class="scheda grafico">
-          <h2>Spese per categoria</h2>
-          <ul id="grafico-categorie" class="barre"></ul>
-        </div>
-        <div class="scheda grafico">
-          <h2>Spese per mese</h2>
-          <div class="area-colonne">
-            <ul id="grafico-mesi" class="colonne"></ul>
+      <details class="scheda gestione fisse">
+        <summary>
+          <span>Spese fisse</span>
+          <span class="riassunto-summary">
+            <span id="fisse-mese-etichetta" class="etichetta-mese"></span>
+            <strong id="fisse-mese-totale">—</strong>
+          </span>
+        </summary>
+        <p class="nota-fisse">
+          Canoni che si ripetono ogni mese. Non compaiono nell'elenco delle spese:
+          formano la base su cui si sommano le spese occasionali.
+        </p>
+
+        <form id="form-fissa" class="griglia-fissa" novalidate>
+          <div class="campo campo-largo">
+            <label for="fissa-descrizione">Descrizione</label>
+            <input type="text" id="fissa-descrizione" name="descrizione" maxlength="200" placeholder="es. Condominio ordinario">
           </div>
+          <div class="campo">
+            <label for="fissa-importo">Importo mensile (€)</label>
+            <input type="number" id="fissa-importo" name="importo" step="0.01" min="0.01" inputmode="decimal" placeholder="0,00">
+          </div>
+          <div class="campo">
+            <label for="fissa-categoria">Categoria</label>
+            <select id="fissa-categoria" name="categoria"></select>
+          </div>
+          <div class="campo">
+            <label for="fissa-inizio">Dal mese</label>
+            <input type="month" id="fissa-inizio" name="inizio">
+          </div>
+          <div class="campo">
+            <label for="fissa-fine">Fino al mese</label>
+            <input type="month" id="fissa-fine" name="fine" placeholder="facoltativo">
+          </div>
+          <div class="azioni-form">
+            <button type="submit" id="fissa-invia">Aggiungi spesa fissa</button>
+            <button type="button" id="fissa-annulla" class="secondario" hidden>Annulla</button>
+          </div>
+        </form>
+
+        <ul id="elenco-fisse" class="elenco-fisse"></ul>
+      </details>
+
+      <details class="scheda gestione">
+        <summary><span>Backup e ripristino</span></summary>
+        <p class="nota-backup">
+          I dati stanno solo su questo dispositivo: se svuoti i dati del browser
+          o cambi telefono, spariscono. Il backup è l'unico modo per riaverli.
+        </p>
+        <div class="riga-backup">
+          <button type="button" id="scarica-backup">Scarica backup</button>
+          <label class="ripristina">
+            <span>Ripristina da backup</span>
+            <input type="file" id="carica-backup" accept="application/json,.json">
+          </label>
         </div>
-      </div>
+        <p class="nota-backup avviso">
+          Il ripristino <strong>sostituisce</strong> tutto ciò che è registrato ora.
+        </p>
+      </details>
+
+      <details class="scheda gestione">
+        <summary><span>Gestisci categorie</span></summary>
+        <form id="form-categoria" class="riga-aggiunta" novalidate>
+          <label for="nuova-categoria" class="etichetta-nascosta">Nuova categoria</label>
+          <input type="text" id="nuova-categoria" name="nome" maxlength="40" placeholder="Nome della nuova categoria">
+          <button type="submit">Aggiungi</button>
+        </form>
+        <ul id="elenco-categorie" class="elenco-categorie"></ul>
+      </details>
     </section>
 
-    <table id="tabella" class="scheda">
-      <thead>
-        <tr>
-          <th>Data</th>
-          <th>Categoria</th>
-          <th>Descrizione</th>
-          <th class="num">Importo</th>
-          <th><span class="etichetta-nascosta">Azioni</span></th>
-        </tr>
-      </thead>
-      <tbody id="corpo-tabella"></tbody>
-    </table>
+    <!-- ================= vista: spese ================= -->
+    <section id="vista-spese" class="vista" aria-label="Elenco delle spese">
 
-    <p id="vuoto" class="vuoto" hidden>Nessuna spesa registrata finora.</p>
-
-    <section class="scheda fisse" aria-label="Spese fisse">
-      <div class="testa-fisse">
-        <p class="titolo-form">Spese fisse</p>
-        <p class="contatore-mese">
-          <span id="fisse-mese-etichetta" class="etichetta-mese"></span>
-          <strong id="fisse-mese-totale">—</strong>
-        </p>
+      <div class="testa-elenco">
+        <p class="totale">Totale <strong id="totale">—</strong> <span id="conteggio" class="conteggio"></span></p>
+        <div class="chips" id="chips">
+          <button type="button" class="chip" data-periodo="mese">Questo mese</button>
+          <button type="button" class="chip" data-periodo="mese-scorso">Mese scorso</button>
+          <button type="button" class="chip" data-periodo="anno">Quest'anno</button>
+          <button type="button" class="chip chip-filtri" id="apri-filtri" aria-expanded="false" aria-controls="pannello-filtri">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18M6 12h12M10 19h4"/></svg>
+            <span>Filtri</span>
+            <span id="conta-filtri" class="pallino" hidden></span>
+          </button>
+        </div>
       </div>
-      <p class="nota-fisse">
-        Canoni che si ripetono ogni mese. Non compaiono nell'elenco qui sopra:
-        formano la base su cui si sommano le spese occasionali.
-      </p>
 
-      <form id="form-fissa" class="griglia-fissa" novalidate>
+      <section id="pannello-filtri" class="scheda filtri" aria-label="Filtri" hidden>
+        <div class="campo">
+          <label for="filtro-da">Dal</label>
+          <input type="date" id="filtro-da">
+        </div>
+        <div class="campo">
+          <label for="filtro-a">Al</label>
+          <input type="date" id="filtro-a">
+        </div>
+        <div class="campo">
+          <label for="filtro-categoria">Categoria</label>
+          <select id="filtro-categoria"></select>
+        </div>
         <div class="campo campo-largo">
-          <label for="fissa-descrizione">Descrizione</label>
-          <input type="text" id="fissa-descrizione" name="descrizione" maxlength="200" placeholder="es. Condominio ordinario">
+          <label for="filtro-testo">Cerca nella descrizione</label>
+          <input type="search" id="filtro-testo" placeholder="es. supermercato">
+        </div>
+        <label class="interruttore campo-largo">
+          <input type="checkbox" id="includi-fisse" checked>
+          <span>Includi le spese fisse nei totali</span>
+        </label>
+        <div class="scorciatoie">
+          <button type="button" data-periodo="azzera">Azzera filtri</button>
+        </div>
+        <div id="esportazioni" class="esportazioni">
+          <button type="button" id="esporta-excel" class="esporta">Esporta per Excel</button>
+          <button type="button" id="esporta-standard" class="esporta">Esporta CSV standard</button>
+        </div>
+      </section>
+
+      <form id="form-spesa" class="scheda foglio-nuova" novalidate hidden>
+        <p id="titolo-form" class="titolo-form">Nuova spesa</p>
+        <div class="campo campo-importo">
+          <label for="importo">Importo (€)</label>
+          <input type="number" id="importo" name="importo" step="0.01" min="0.01" inputmode="decimal" placeholder="0,00" required>
         </div>
         <div class="campo">
-          <label for="fissa-importo">Importo mensile (€)</label>
-          <input type="number" id="fissa-importo" name="importo" step="0.01" min="0.01" placeholder="0,00">
+          <label for="data">Data</label>
+          <input type="date" id="data" name="data" required>
         </div>
         <div class="campo">
-          <label for="fissa-categoria">Categoria</label>
-          <select id="fissa-categoria" name="categoria"></select>
+          <label for="categoria">Categoria</label>
+          <select id="categoria" name="categoria" required></select>
         </div>
-        <div class="campo">
-          <label for="fissa-inizio">Dal mese</label>
-          <input type="month" id="fissa-inizio" name="inizio">
-        </div>
-        <div class="campo">
-          <label for="fissa-fine">Fino al mese</label>
-          <input type="month" id="fissa-fine" name="fine" placeholder="facoltativo">
+        <div class="campo campo-largo">
+          <label for="descrizione">Descrizione</label>
+          <input type="text" id="descrizione" name="descrizione" maxlength="200" placeholder="facoltativa">
         </div>
         <div class="azioni-form">
-          <button type="submit" id="fissa-invia">Aggiungi spesa fissa</button>
-          <button type="button" id="fissa-annulla" class="secondario" hidden>Annulla</button>
+          <button type="submit" id="bottone-invia">Aggiungi spesa</button>
+          <button type="button" id="bottone-annulla" class="secondario">Annulla</button>
         </div>
       </form>
 
-      <ul id="elenco-fisse" class="elenco-fisse"></ul>
+      <ul id="elenco-spese" class="elenco-spese"></ul>
+      <p id="vuoto" class="vuoto" hidden>Nessuna spesa registrata finora.</p>
     </section>
-
-    <details class="scheda gestione">
-      <summary>Backup e ripristino</summary>
-      <p class="nota-backup">
-        I dati stanno solo su questo dispositivo: se svuoti i dati del browser
-        o cambi telefono, spariscono. Il backup è l'unico modo per riaverli.
-      </p>
-      <div class="riga-backup">
-        <button type="button" id="scarica-backup">Scarica backup</button>
-        <label class="ripristina">
-          <span>Ripristina da backup</span>
-          <input type="file" id="carica-backup" accept="application/json,.json">
-        </label>
-      </div>
-      <p class="nota-backup avviso">
-        Il ripristino <strong>sostituisce</strong> tutto ciò che è registrato ora.
-      </p>
-    </details>
-
-    <details class="scheda gestione">
-      <summary>Gestisci categorie</summary>
-      <form id="form-categoria" class="riga-aggiunta" novalidate>
-        <label for="nuova-categoria" class="etichetta-nascosta">Nuova categoria</label>
-        <input type="text" id="nuova-categoria" name="nome" maxlength="40" placeholder="Nome della nuova categoria">
-        <button type="submit">Aggiungi</button>
-      </form>
-      <ul id="elenco-categorie" class="elenco-categorie"></ul>
-    </details>
   </main>
+
+  <div class="barra-azione">
+    <button type="button" id="apri-nuova" class="principale">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+      Aggiungi spesa
+    </button>
+  </div>
+
+  <nav class="barra-inferiore" aria-label="Sezioni">
+    <button type="button" class="voce-nav" data-vista="mese" aria-current="page">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V9m5 10V5m5 14v-7m5 7V8"/></svg>
+      <span>Mese</span>
+    </button>
+    <button type="button" class="voce-nav" data-vista="spese">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+      <span>Spese</span>
+    </button>
+  </nav>
 
   <dialog id="dialogo-conferma">
     <form method="dialog">

@@ -6,9 +6,18 @@ dati restano nel dispositivo di chi la usa.
 
 ## Funzionalità
 
+**Due viste.** Una barra in basso commuta fra *Mese* e *Spese*. *Mese* risponde
+alla domanda «quanto ho speso»: totale del mese scelto, ripartizione per
+categoria, andamento degli ultimi sei mesi, medie. *Spese* è il registro:
+l'elenco raggruppato per giorno, i filtri e l'inserimento, con il pulsante di
+aggiunta fisso in basso. Le due viste sono indipendenti — spostarsi di mese nel
+cruscotto non tocca i filtri dell'elenco.
+
 **Spese.** Registrazione di data, importo, categoria e descrizione facoltativa.
-Ogni spesa si può correggere o eliminare dall'elenco, che è sempre in ordine
-cronologico crescente indipendentemente dall'ordine di inserimento.
+Ogni spesa si può correggere o eliminare toccandola nell'elenco, che raggruppa
+le voci per giorno dal più recente. A ogni categoria è associato un colore,
+usato in modo coerente fra elenco e grafici; i colori sono verificati perché
+restino distinguibili anche a chi ha una carenza nella visione dei colori.
 
 **Categorie.** Si aggiungono, rinominano ed eliminano dal pannello "Gestisci
 categorie". Rinominare una categoria aggiorna anche le spese collegate, mentre

@@ -8,8 +8,7 @@ const campoDescrizione = document.getElementById("descrizione");
 const selectCategoria = document.getElementById("categoria");
 const bottoneInvia = document.getElementById("bottone-invia");
 const bottoneAnnulla = document.getElementById("bottone-annulla");
-const corpoTabella = document.getElementById("corpo-tabella");
-const tabella = document.getElementById("tabella");
+const elencoSpese = document.getElementById("elenco-spese");
 const elencoErrori = document.getElementById("errori");
 const totaleEl = document.getElementById("totale");
 const vuotoEl = document.getElementById("vuoto");
@@ -46,14 +45,66 @@ const kpiGiornaliera = document.getElementById("kpi-giornaliera");
 const kpiGiorni = document.getElementById("kpi-giorni");
 const graficoCategorie = document.getElementById("grafico-categorie");
 const graficoMesi = document.getElementById("grafico-mesi");
+const pilaCategorie = document.getElementById("pila-categorie");
+const totaleMese = document.getElementById("totale-mese");
+const etichettaMeseCorrente = document.getElementById("mese-corrente");
+const mesePrecedente = document.getElementById("mese-precedente");
+const meseSuccessivo = document.getElementById("mese-successivo");
+const barraInferiore = document.querySelector(".barra-inferiore");
+const apriNuova = document.getElementById("apri-nuova");
+const apriFiltri = document.getElementById("apri-filtri");
+const pannelloFiltri = document.getElementById("pannello-filtri");
+const contaFiltri = document.getElementById("conta-filtri");
+const chips = document.getElementById("chips");
 
 const euro = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" });
 const giorno = new Intl.DateTimeFormat("it-IT", { day: "2-digit", month: "2-digit", year: "numeric" });
 const percentuale = new Intl.NumberFormat("it-IT", { style: "percent", maximumFractionDigits: 0 });
 const meseEsteso = new Intl.DateTimeFormat("it-IT", { month: "short", year: "numeric" });
+const meseLungo = new Intl.DateTimeFormat("it-IT", { month: "long", year: "numeric" });
+const meseSolo = new Intl.DateTimeFormat("it-IT", { month: "short" });
+const giornoEsteso = new Intl.DateTimeFormat("it-IT", { weekday: "long", day: "numeric", month: "long" });
 
 let idInModifica = null;
 let idFissaInModifica = null;
+let vistaAttiva = "mese";
+let meseVisualizzato = dati.meseCorrente();
+let idSpesaAperta = null;
+
+// --- colori delle categorie ----------------------------------------------
+
+// L'assegnazione segue l'ordine stabile delle categorie, così un colore resta
+// legato alla stessa categoria anche quando un filtro ne toglie altre di mezzo.
+// Oltre la sesta si usa un neutro invece di riciclare una tinta già in uso.
+function coloreCategoria(nome) {
+  const posizione = dati.nomiCategorie().indexOf(nome);
+  return posizione >= 0 && posizione < 6
+    ? `var(--cat-${posizione + 1})`
+    : "var(--cat-oltre)";
+}
+
+function creaPunto(categoria) {
+  const punto = document.createElement("i");
+  punto.className = "punto";
+  punto.style.background = coloreCategoria(categoria);
+  return punto;
+}
+
+// --- viste ---------------------------------------------------------------
+
+function mostraVista(nome) {
+  vistaAttiva = nome;
+  document.body.dataset.vista = nome;
+  for (const vista of document.querySelectorAll(".vista")) {
+    vista.classList.toggle("attiva", vista.id === `vista-${nome}`);
+  }
+  for (const voce of barraInferiore.querySelectorAll(".voce-nav")) {
+    const attiva = voce.dataset.vista === nome;
+    voce.toggleAttribute("aria-current", attiva);
+    if (attiva) voce.setAttribute("aria-current", "page");
+  }
+  window.scrollTo({ top: 0 });
+}
 
 // --- filtri --------------------------------------------------------------
 
@@ -66,25 +117,40 @@ function filtriAttivi() {
   return filtri;
 }
 
-function impostaPeriodo(periodo) {
+function intervalloPeriodo(periodo) {
   const adesso = new Date();
   const anno = adesso.getFullYear();
   const mese = adesso.getMonth();
 
+  if (periodo === "mese") {
+    return [
+      dati.isoLocale(new Date(anno, mese, 1)),
+      dati.isoLocale(new Date(anno, mese + 1, 0)),
+    ];
+  }
+  if (periodo === "mese-scorso") {
+    return [
+      dati.isoLocale(new Date(anno, mese - 1, 1)),
+      dati.isoLocale(new Date(anno, mese, 0)),
+    ];
+  }
+  if (periodo === "anno") {
+    return [
+      dati.isoLocale(new Date(anno, 0, 1)),
+      dati.isoLocale(new Date(anno, 11, 31)),
+    ];
+  }
+  return ["", ""];
+}
+
+function impostaPeriodo(periodo) {
+  const [da, a] = intervalloPeriodo(periodo);
+  filtroDa.value = da;
+  filtroA.value = a;
+
   if (periodo === "azzera") {
-    filtroDa.value = "";
-    filtroA.value = "";
     filtroCategoria.value = "";
     filtroTesto.value = "";
-  } else if (periodo === "mese") {
-    filtroDa.value = dati.isoLocale(new Date(anno, mese, 1));
-    filtroA.value = dati.isoLocale(new Date(anno, mese + 1, 0));
-  } else if (periodo === "mese-scorso") {
-    filtroDa.value = dati.isoLocale(new Date(anno, mese - 1, 1));
-    filtroA.value = dati.isoLocale(new Date(anno, mese, 0));
-  } else if (periodo === "anno") {
-    filtroDa.value = dati.isoLocale(new Date(anno, 0, 1));
-    filtroA.value = dati.isoLocale(new Date(anno, 11, 31));
   }
 }
 
@@ -154,25 +220,33 @@ async function applica(errori) {
 function tornaANuovaSpesa() {
   idInModifica = null;
   form.reset();
+  form.hidden = true;
   campoData.value = dati.oggiIso();
   titoloForm.textContent = "Nuova spesa";
   bottoneInvia.textContent = "Aggiungi spesa";
-  bottoneAnnulla.hidden = true;
-  document.querySelector("tr.in-modifica")?.classList.remove("in-modifica");
+  document.querySelector(".in-modifica")?.classList.remove("in-modifica");
+}
+
+function apriFoglioNuova() {
+  mostraVista("spese");
+  form.hidden = false;
+  campoImporto.focus();
+  form.scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
 function iniziaModifica(spesa) {
   idInModifica = spesa.id;
+  mostraVista("spese");
+  form.hidden = false;
   campoData.value = spesa.data;
   campoImporto.value = spesa.importo;
   selectCategoria.value = spesa.categoria;
   campoDescrizione.value = spesa.descrizione;
   titoloForm.textContent = "Modifica spesa";
   bottoneInvia.textContent = "Salva modifiche";
-  bottoneAnnulla.hidden = false;
   mostraErrori([]);
 
-  document.querySelector("tr.in-modifica")?.classList.remove("in-modifica");
+  document.querySelector(".in-modifica")?.classList.remove("in-modifica");
   document.getElementById(`spesa-${spesa.id}`)?.classList.add("in-modifica");
   form.scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
@@ -188,32 +262,71 @@ async function eliminaSpesa(spesa) {
   await applica(await dati.eliminaSpesa(spesa.id));
 }
 
-function creaRiga(spesa) {
-  const riga = document.createElement("tr");
-  riga.id = `spesa-${spesa.id}`;
+function creaSpesa(spesa) {
+  const voce = document.createElement("li");
+  voce.id = `spesa-${spesa.id}`;
+  voce.className = "spesa";
+  if (spesa.id === idSpesaAperta) voce.classList.add("aperta");
 
-  const valori = [
-    giorno.format(dataLocale(spesa.data)),
-    spesa.categoria,
-    spesa.descrizione || "—",
-    euro.format(spesa.importo),
-  ];
-  valori.forEach((valore, indice) => {
-    const cella = document.createElement("td");
-    cella.textContent = valore;
-    if (indice === valori.length - 1) cella.className = "num";
-    riga.append(cella);
-  });
+  const corpo = document.createElement("span");
+  corpo.className = "corpo-spesa";
+  const titolo = document.createElement("b");
+  titolo.textContent = spesa.descrizione || spesa.categoria;
+  const sotto = document.createElement("small");
+  sotto.textContent = spesa.descrizione
+    ? spesa.categoria
+    : giorno.format(dataLocale(spesa.data));
+  corpo.append(titolo, sotto);
 
-  const azioni = document.createElement("td");
-  azioni.className = "azioni";
+  const importo = document.createElement("span");
+  importo.className = "importo-spesa";
+  importo.textContent = euro.format(spesa.importo);
+
+  const azioni = document.createElement("span");
+  azioni.className = "azioni-spesa";
   azioni.append(
     creaBottone("Modifica", "minimo", () => iniziaModifica(spesa)),
     creaBottone("Elimina", "minimo pericolo", () => eliminaSpesa(spesa))
   );
-  riga.append(azioni);
 
-  return riga;
+  voce.append(creaPunto(spesa.categoria), corpo, importo, azioni);
+
+  // Su telefono le azioni non stanno in riga senza sacrificare l'importo,
+  // quindi un tocco sulla spesa le apre invece di tenerle sempre visibili.
+  voce.addEventListener("click", (evento) => {
+    if (evento.target.closest("button")) return;
+    idSpesaAperta = idSpesaAperta === spesa.id ? null : spesa.id;
+    voce.classList.toggle("aperta", idSpesaAperta === spesa.id);
+    for (const altra of elencoSpese.querySelectorAll(".spesa.aperta")) {
+      if (altra !== voce) altra.classList.remove("aperta");
+    }
+  });
+
+  return voce;
+}
+
+function creaTestaGiorno(iso) {
+  const testa = document.createElement("li");
+  testa.className = "giorno";
+  const data = dataLocale(iso);
+  testa.textContent =
+    iso === dati.oggiIso() ? `Oggi · ${giornoEsteso.format(data)}` : giornoEsteso.format(data);
+  return testa;
+}
+
+// Raggruppa per giorno, dal più recente: leggere un estratto conto
+// significa scorrere i giorni, non una sequenza indistinta di righe.
+function vociElenco(spese) {
+  const voci = [];
+  let giornoPrecedente = null;
+  for (const spesa of [...spese].reverse()) {
+    if (spesa.data !== giornoPrecedente) {
+      voci.push(creaTestaGiorno(spesa.data));
+      giornoPrecedente = spesa.data;
+    }
+    voci.push(creaSpesa(spesa));
+  }
+  return voci;
 }
 
 // --- categorie -----------------------------------------------------------
@@ -422,13 +535,14 @@ function creaBarraCategoria(voce, massimo) {
 
   const etichetta = document.createElement("span");
   etichetta.className = "etichetta-barra";
-  etichetta.textContent = voce.categoria;
+  etichetta.append(creaPunto(voce.categoria), voce.categoria);
 
   const traccia = document.createElement("span");
   traccia.className = "traccia";
   const riempimento = document.createElement("span");
   riempimento.className = "riempimento";
   riempimento.style.width = `${massimo ? (voce.totale / massimo) * 100 : 0}%`;
+  riempimento.style.background = coloreCategoria(voce.categoria);
   traccia.append(riempimento);
 
   const valore = document.createElement("span");
@@ -439,16 +553,18 @@ function creaBarraCategoria(voce, massimo) {
   return riga;
 }
 
-function creaColonnaMese(voce, massimo) {
+function creaColonnaMese(voce, massimo, etichettato = true) {
   const colonna = document.createElement("li");
+  if (voce.mese === meseVisualizzato) colonna.className = "mese-mostrato";
 
   const valore = document.createElement("span");
   valore.className = "valore-colonna";
-  valore.textContent = euro.format(voce.totale);
+  valore.textContent = etichettato ? euro.format(voce.totale) : "";
 
   const asta = document.createElement("span");
   asta.className = "asta";
-  asta.style.height = `${massimo ? (voce.totale / massimo) * 100 : 0}%`;
+  // Un mese senza spese resta vuoto: una barra minima direbbe il falso.
+  asta.style.height = voce.totale > 0 ? `${(voce.totale / massimo) * 100}%` : "0";
 
   const contenitore = document.createElement("span");
   contenitore.className = "contenitore-asta";
@@ -456,7 +572,9 @@ function creaColonnaMese(voce, massimo) {
 
   const etichetta = document.createElement("span");
   etichetta.className = "etichetta-colonna";
-  etichetta.textContent = meseLeggibile(voce.mese);
+  // Solo il mese: l'anno è già nell'intestazione del cruscotto, e ripeterlo
+  // qui fa troncare l'etichetta su schermo stretto ("mag 20…").
+  etichetta.textContent = meseSolo.format(dataLocale(`${voce.mese}-01`));
 
   colonna.append(valore, contenitore, etichetta);
   return colonna;
@@ -486,14 +604,9 @@ function disegna() {
   const totaleFisse = ricorrenze.reduce((somma, r) => somma + r.importo, 0);
 
   popolaCategorie(dati.nomiCategorie());
-  corpoTabella.replaceChildren(...spese.map(creaRiga));
+  elencoSpese.replaceChildren(...vociElenco(spese));
 
   totaleEl.textContent = euro.format(totaleCorrenti + totaleFisse);
-  scomposizione.hidden = ricorrenze.length === 0;
-  scomposizione.textContent =
-    `${euro.format(totaleCorrenti)} di spese correnti` +
-    ` + ${euro.format(totaleFisse)} di spese fisse` +
-    ` su ${ricorrenze.length} mensilità`;
 
   const numero = spese.length;
   const singolare = numero === 1;
@@ -504,23 +617,41 @@ function disegna() {
 
   const senzaSpese = numero === 0;
   esportazioni.hidden = senzaSpese;
-  tabella.hidden = senzaSpese;
+  elencoSpese.hidden = senzaSpese;
   vuotoEl.hidden = !senzaSpese;
   vuotoEl.textContent = filtrato
     ? "Nessuna spesa corrisponde ai filtri impostati."
     : "Nessuna spesa registrata finora.";
 
+  aggiornaChips(filtri);
+
   if (idInModifica !== null) {
     document.getElementById(`spesa-${idInModifica}`)?.classList.add("in-modifica");
   }
 
-  disegnaRiepilogo(filtri, conFisse);
+  disegnaMese();
   disegnaCategorie();
   disegnaFisse();
 }
 
-function disegnaRiepilogo(filtri, conFisse) {
-  const riepilogo = dati.riepilogo(filtri, conFisse);
+// Il cruscotto guarda un mese alla volta, indipendente dai filtri
+// dell'elenco: le due viste rispondono a due domande diverse.
+function disegnaMese() {
+  const conFisse = includiFisse.checked;
+  const [da, a] = dati.estremiDelMese(meseVisualizzato);
+  const riepilogo = dati.riepilogo({ da, a }, conFisse);
+
+  etichettaMeseCorrente.textContent = capitalizza(
+    meseLungo.format(dataLocale(`${meseVisualizzato}-01`))
+  );
+  meseSuccessivo.disabled = meseVisualizzato >= dati.meseCorrente();
+
+  totaleMese.textContent = euro.format(riepilogo.totale);
+
+  const correnti = dati.elencaSpese({ da, a }).reduce((s, v) => s + v.importo, 0);
+  const fisse = riepilogo.totale - correnti;
+  scomposizione.hidden = !conFisse || fisse <= 0;
+  scomposizione.textContent = `${euro.format(fisse)} di fisse + ${euro.format(correnti)} di correnti`;
 
   kpiMedia.textContent = riepilogo.numero ? euro.format(riepilogo.media) : "—";
   kpiGiornaliera.textContent = riepilogo.numero
@@ -530,19 +661,78 @@ function disegnaRiepilogo(filtri, conFisse) {
     ? `${riepilogo.giorni} ${riepilogo.giorni === 1 ? "giorno" : "giorni"}`
     : "—";
 
+  pilaCategorie.replaceChildren(
+    ...riepilogo.perCategoria.map((voce) => {
+      const segmento = document.createElement("span");
+      segmento.style.flex = `${voce.totale} 0 0`;
+      segmento.style.background = coloreCategoria(voce.categoria);
+      return segmento;
+    })
+  );
+
   const massimoCategoria = Math.max(0, ...riepilogo.perCategoria.map((v) => v.totale));
   graficoCategorie.replaceChildren(
     ...(riepilogo.perCategoria.length
       ? riepilogo.perCategoria.map((voce) => creaBarraCategoria(voce, massimoCategoria))
-      : [messaggioAssente("Nessuna spesa da riepilogare.")])
+      : [messaggioAssente("Nessuna spesa in questo mese.")])
   );
 
-  const massimoMese = Math.max(0, ...riepilogo.perMese.map((v) => v.totale));
+  disegnaUltimiMesi(conFisse);
+}
+
+// Sei mesi fino a quello mostrato: entrano in larghezza su un telefono
+// senza scorrimento orizzontale, e bastano a far vedere un andamento.
+function disegnaUltimiMesi(conFisse) {
+  const totali = ultimiMesi(meseVisualizzato, 6).map((mese) => {
+    const [da, a] = dati.estremiDelMese(mese);
+    return { mese, totale: dati.riepilogo({ da, a }, conFisse).totale };
+  });
+
+  const massimo = Math.max(0, ...totali.map((v) => v.totale));
+  // Un numero su ogni colonna è rumore: si etichettano solo il mese mostrato
+  // e quello più alto, che sono le due colonne che si vanno a cercare.
+  const daEtichettare = new Set([
+    meseVisualizzato,
+    totali.find((v) => v.totale === massimo)?.mese,
+  ]);
+
   graficoMesi.replaceChildren(
-    ...(riepilogo.perMese.length
-      ? riepilogo.perMese.map((voce) => creaColonnaMese(voce, massimoMese))
+    ...(massimo > 0
+      ? totali.map((voce) => creaColonnaMese(voce, massimo, daEtichettare.has(voce.mese)))
       : [messaggioAssente("Nessuna spesa da riepilogare.")])
   );
+}
+
+function ultimiMesi(ultimo, quanti) {
+  const mesi = [];
+  let [anno, mese] = ultimo.split("-").map(Number);
+  for (let i = 0; i < quanti; i += 1) {
+    mesi.unshift(`${String(anno).padStart(4, "0")}-${String(mese).padStart(2, "0")}`);
+    [anno, mese] = mese === 1 ? [anno - 1, 12] : [anno, mese - 1];
+  }
+  return mesi;
+}
+
+function capitalizza(testo) {
+  return testo.charAt(0).toUpperCase() + testo.slice(1);
+}
+
+// Il pallino sul chip dei filtri dice che una selezione è attiva anche
+// quando il pannello è chiuso: altrimenti un totale filtrato sembra sbagliato.
+function aggiornaChips(filtri) {
+  contaFiltri.hidden = Object.keys(filtri).length === 0;
+  for (const chip of chips.querySelectorAll("[data-periodo]")) {
+    chip.setAttribute("aria-pressed", String(chip.dataset.periodo === periodoAttivo(filtri)));
+  }
+}
+
+function periodoAttivo(filtri) {
+  if (!filtri.da || !filtri.a || filtri.categoria || filtri.testo) return null;
+  for (const periodo of ["mese", "mese-scorso", "anno"]) {
+    const [da, a] = intervalloPeriodo(periodo);
+    if (da === filtri.da && a === filtri.a) return periodo;
+  }
+  return null;
 }
 
 function disegnaCategorie() {
@@ -617,6 +807,44 @@ scorciatoie.addEventListener("click", (evento) => {
   impostaPeriodo(periodo);
   disegna();
 });
+
+chips.addEventListener("click", (evento) => {
+  const chip = evento.target.closest("[data-periodo]");
+  if (!chip) return;
+  // Un secondo tocco sullo stesso periodo lo toglie: senza, per tornare a
+  // vedere tutto bisognerebbe aprire i filtri.
+  impostaPeriodo(chip.getAttribute("aria-pressed") === "true" ? "azzera" : chip.dataset.periodo);
+  disegna();
+});
+
+barraInferiore.addEventListener("click", (evento) => {
+  const voce = evento.target.closest(".voce-nav");
+  if (voce) mostraVista(voce.dataset.vista);
+});
+
+apriNuova.addEventListener("click", apriFoglioNuova);
+
+apriFiltri.addEventListener("click", () => {
+  const aperto = apriFiltri.getAttribute("aria-expanded") === "true";
+  apriFiltri.setAttribute("aria-expanded", String(!aperto));
+  pannelloFiltri.hidden = aperto;
+});
+
+mesePrecedente.addEventListener("click", () => {
+  meseVisualizzato = spostaMese(meseVisualizzato, -1);
+  disegnaMese();
+});
+
+meseSuccessivo.addEventListener("click", () => {
+  meseVisualizzato = spostaMese(meseVisualizzato, 1);
+  disegnaMese();
+});
+
+function spostaMese(mese, passo) {
+  const [anno, numero] = mese.split("-").map(Number);
+  const spostato = new Date(anno, numero - 1 + passo, 1);
+  return dati.isoLocale(spostato).slice(0, 7);
+}
 
 includiFisse.addEventListener("change", () => {
   try {
@@ -780,6 +1008,7 @@ try {
 }
 
 await dati.inizializza();
+mostraVista("mese");
 tornaANuovaSpesa();
 tornaANuovaFissa();
 disegna();
