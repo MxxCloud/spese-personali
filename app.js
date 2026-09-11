@@ -1008,7 +1008,7 @@ try {
 }
 
 await dati.inizializza();
-mostraVista("mese");
+mostraVista("spese");
 tornaANuovaSpesa();
 tornaANuovaFissa();
 disegna();
