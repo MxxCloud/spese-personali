@@ -978,6 +978,44 @@ body[data-vista="spese"] .barra-azione {
   gap: 0.4rem;
 }
 
+.ordinamento {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.ordina {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-height: 34px;
+  padding: 0 0.65rem;
+  border: 1px solid var(--bordo);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--testo-tenue);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.ordina:hover {
+  filter: none;
+  border-color: var(--accento);
+  color: var(--testo);
+}
+
+.ordina.attivo {
+  border-color: var(--accento);
+  color: var(--accento);
+}
+
+.ordina .freccia {
+  font-size: 0.75rem;
+  width: 0.7em;
+  display: inline-block;
+}
+
 .chip {
   display: inline-flex;
   align-items: center;

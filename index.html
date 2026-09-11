@@ -142,6 +142,16 @@
 
       <div class="testa-elenco">
         <p class="totale">Totale <strong id="totale">—</strong> <span id="conteggio" class="conteggio"></span></p>
+        <div class="ordinamento" role="group" aria-label="Ordina l'elenco">
+          <button type="button" class="ordina" id="ordina-data" data-campo="data">
+            <span>Data</span>
+            <span class="freccia" aria-hidden="true"></span>
+          </button>
+          <button type="button" class="ordina" id="ordina-importo" data-campo="importo">
+            <span>Importo</span>
+            <span class="freccia" aria-hidden="true"></span>
+          </button>
+        </div>
         <div class="chips" id="chips">
           <button type="button" class="chip" data-periodo="mese">Questo mese</button>
           <button type="button" class="chip" data-periodo="mese-scorso">Mese scorso</button>

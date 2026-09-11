@@ -70,6 +70,7 @@ let idFissaInModifica = null;
 let vistaAttiva = "mese";
 let meseVisualizzato = dati.meseCorrente();
 let idSpesaAperta = null;
+let ordinamento = { campo: "data", direzione: "asc" };
 
 // --- colori delle categorie ----------------------------------------------
 
@@ -262,7 +263,7 @@ async function eliminaSpesa(spesa) {
   await applica(await dati.eliminaSpesa(spesa.id));
 }
 
-function creaSpesa(spesa) {
+function creaSpesa(spesa, mostraData) {
   const voce = document.createElement("li");
   voce.id = `spesa-${spesa.id}`;
   voce.className = "spesa";
@@ -273,9 +274,14 @@ function creaSpesa(spesa) {
   const titolo = document.createElement("b");
   titolo.textContent = spesa.descrizione || spesa.categoria;
   const sotto = document.createElement("small");
-  sotto.textContent = spesa.descrizione
-    ? spesa.categoria
-    : giorno.format(dataLocale(spesa.data));
+  // Quando l'elenco è raggruppato per giorno la data è già nell'intestazione
+  // del gruppo; fuori da quel raggruppamento (ordinamento per importo) va
+  // ripetuta qui, perché è l'unico punto in cui comparirebbe.
+  const parti = [];
+  if (mostraData) parti.push(giorno.format(dataLocale(spesa.data)));
+  if (spesa.descrizione) parti.push(spesa.categoria);
+  else if (!mostraData) parti.push(giorno.format(dataLocale(spesa.data)));
+  sotto.textContent = parti.join(" · ");
   corpo.append(titolo, sotto);
 
   const importo = document.createElement("span");
@@ -314,9 +320,14 @@ function creaTestaGiorno(iso) {
   return testa;
 }
 
-// Raggruppa per giorno, dal più vecchio al più recente: leggere un
-// estratto conto significa scorrere i giorni, non una sequenza indistinta di righe.
-function vociElenco(spese) {
+// Ordinata per data, l'elenco si raggruppa per giorno: leggere un estratto
+// conto significa scorrere i giorni, non una sequenza indistinta di righe.
+// Ordinata per importo il raggruppamento perde senso, quindi diventa un
+// elenco piatto e ogni riga porta con sé la propria data.
+function vociElenco(spese, raggruppaPerGiorno) {
+  if (!raggruppaPerGiorno) {
+    return spese.map((spesa) => creaSpesa(spesa, true));
+  }
   const voci = [];
   let giornoPrecedente = null;
   for (const spesa of spese) {
@@ -324,10 +335,45 @@ function vociElenco(spese) {
       voci.push(creaTestaGiorno(spesa.data));
       giornoPrecedente = spesa.data;
     }
-    voci.push(creaSpesa(spesa));
+    voci.push(creaSpesa(spesa, false));
   }
   return voci;
 }
+
+function ordinaSpese(spese) {
+  const fattore = ordinamento.direzione === "asc" ? 1 : -1;
+  return [...spese].sort((a, b) => {
+    if (ordinamento.campo === "importo") {
+      return (a.importo - b.importo) * fattore || a.data.localeCompare(b.data);
+    }
+    return (a.data.localeCompare(b.data) || a.id - b.id) * fattore;
+  });
+}
+
+function aggiornaBottoniOrdine() {
+  for (const bottone of document.querySelectorAll(".ordina")) {
+    const attivo = bottone.dataset.campo === ordinamento.campo;
+    bottone.classList.toggle("attivo", attivo);
+    bottone.querySelector(".freccia").textContent = attivo
+      ? ordinamento.direzione === "asc"
+        ? "↑"
+        : "↓"
+      : "";
+  }
+}
+
+for (const bottone of document.querySelectorAll(".ordina")) {
+  bottone.addEventListener("click", () => {
+    const campo = bottone.dataset.campo;
+    ordinamento =
+      ordinamento.campo === campo
+        ? { campo, direzione: ordinamento.direzione === "asc" ? "desc" : "asc" }
+        : { campo, direzione: "asc" };
+    aggiornaBottoniOrdine();
+    disegna();
+  });
+}
+aggiornaBottoniOrdine();
 
 // --- categorie -----------------------------------------------------------
 
@@ -598,13 +644,13 @@ function disegna() {
   const filtrato = Object.keys(filtri).length > 0;
   const conFisse = includiFisse.checked;
 
-  const spese = dati.elencaSpese(filtri);
+  const spese = ordinaSpese(dati.elencaSpese(filtri));
   const ricorrenze = conFisse ? dati.occorrenzeFisse(filtri) : [];
   const totaleCorrenti = spese.reduce((somma, s) => somma + s.importo, 0);
   const totaleFisse = ricorrenze.reduce((somma, r) => somma + r.importo, 0);
 
   popolaCategorie(dati.nomiCategorie());
-  elencoSpese.replaceChildren(...vociElenco(spese));
+  elencoSpese.replaceChildren(...vociElenco(spese, ordinamento.campo === "data"));
 
   totaleEl.textContent = euro.format(totaleCorrenti + totaleFisse);
 
