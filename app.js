@@ -314,6 +314,49 @@ function creaTestaGiorno(iso) {
   return testa;
 }
 
+function creaVoceRicorrenza(ricorrenza) {
+  const voce = document.createElement("li");
+  voce.className = "spesa spesa-fissa";
+
+  const corpo = document.createElement("span");
+  corpo.className = "corpo-spesa";
+  const titolo = document.createElement("b");
+  titolo.textContent = ricorrenza.descrizione;
+  const sotto = document.createElement("small");
+  sotto.textContent = ricorrenza.categoria;
+  corpo.append(titolo, sotto);
+
+  const importo = document.createElement("span");
+  importo.className = "importo-spesa";
+  importo.textContent = euro.format(ricorrenza.importo);
+
+  voce.append(creaPunto(ricorrenza.categoria), corpo, importo);
+  return voce;
+}
+
+// Le spese fisse aprono l'elenco, una sezione per mese coperto dai filtri.
+// Sono in cima perché sono la base su cui si sommano le occasionali, e
+// separate perché non si modificano da qui ma dalla vista del mese.
+function vociFisse(ricorrenze) {
+  if (ricorrenze.length === 0) return [];
+
+  const perMese = new Map();
+  for (const ricorrenza of ricorrenze) {
+    if (!perMese.has(ricorrenza.mese)) perMese.set(ricorrenza.mese, []);
+    perMese.get(ricorrenza.mese).push(ricorrenza);
+  }
+
+  const voci = [];
+  // Dal mese più recente, come l'elenco delle occasionali sotto.
+  for (const mese of [...perMese.keys()].sort().reverse()) {
+    const testa = document.createElement("li");
+    testa.className = "giorno giorno-fisse";
+    testa.textContent = `Spese fisse · ${meseLungo.format(dataLocale(`${mese}-01`))}`;
+    voci.push(testa, ...perMese.get(mese).map(creaVoceRicorrenza));
+  }
+  return voci;
+}
+
 // Raggruppa per giorno, dal più recente: leggere un estratto conto
 // significa scorrere i giorni, non una sequenza indistinta di righe.
 function vociElenco(spese) {
@@ -604,7 +647,7 @@ function disegna() {
   const totaleFisse = ricorrenze.reduce((somma, r) => somma + r.importo, 0);
 
   popolaCategorie(dati.nomiCategorie());
-  elencoSpese.replaceChildren(...vociElenco(spese));
+  elencoSpese.replaceChildren(...vociFisse(ricorrenze), ...vociElenco(spese));
 
   totaleEl.textContent = euro.format(totaleCorrenti + totaleFisse);
 
@@ -616,8 +659,10 @@ function disegna() {
     : "";
 
   const senzaSpese = numero === 0;
+  // L'elenco resta visibile se ci sono solo spese fisse: il messaggio
+  // "nessuna spesa" parla delle occasionali, che restano zero.
   esportazioni.hidden = senzaSpese;
-  elencoSpese.hidden = senzaSpese;
+  elencoSpese.hidden = senzaSpese && ricorrenze.length === 0;
   vuotoEl.hidden = !senzaSpese;
   vuotoEl.textContent = filtrato
     ? "Nessuna spesa corrisponde ai filtri impostati."

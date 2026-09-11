@@ -1301,3 +1301,13 @@ body[data-vista="spese"] .barra-azione {
     order: 2;
   }
 }
+
+/* Le spese fisse in cima all'elenco: stessa anatomia delle occasionali,
+   ma senza azioni e con un'intestazione che le distingue dai giorni. */
+.giorno-fisse {
+  color: var(--accento);
+}
+
+.spesa-fissa {
+  grid-template-columns: 9px 1fr auto;
+}
