@@ -1,7 +1,13 @@
 // Service worker: tiene una copia dell'applicazione per il funzionamento offline.
-// Va aggiornata VERSIONE a ogni pubblicazione, altrimenti la copia vecchia resta.
+//
+// La strategia è "prima la rete" (vedi il gestore fetch in fondo), quindi chi è
+// online riceve comunque i file aggiornati: non è VERSIONE a farli arrivare.
+// Va cambiata lo stesso a ogni pubblicazione, per due motivi diversi. Modificare
+// questo file è ciò che fa accorgere il browser che esiste un nuovo service
+// worker da installare, e il nome nuovo fa cancellare ad "activate" il deposito
+// precedente, così non restano in giro copie morte.
 
-const VERSIONE = "spese-v5";
+const VERSIONE = "spese-v6";
 
 const RISORSE = [
   "./",

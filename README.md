@@ -85,5 +85,7 @@ Poi apri <http://127.0.0.1:8001>.
 | `manifest.webmanifest` | dati per l'installazione |
 
 Modificando i file dell'applicazione va aggiornata anche la costante `VERSIONE`
-in `sw.js`, altrimenti chi ha già visitato la app continua a vedere la copia
-precedente.
+in `sw.js`. Non serve a far arrivare le modifiche — la strategia è «prima la
+rete», quindi chi è online riceve comunque i file aggiornati — ma è ciò che fa
+accorgere il browser che c'è un nuovo service worker da installare, e fa
+cancellare il deposito della versione precedente invece di lasciarlo lì.
