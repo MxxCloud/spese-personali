@@ -314,12 +314,12 @@ function creaTestaGiorno(iso) {
   return testa;
 }
 
-// Raggruppa per giorno, dal più recente: leggere un estratto conto
-// significa scorrere i giorni, non una sequenza indistinta di righe.
+// Raggruppa per giorno, dal più vecchio al più recente: leggere un
+// estratto conto significa scorrere i giorni, non una sequenza indistinta di righe.
 function vociElenco(spese) {
   const voci = [];
   let giornoPrecedente = null;
-  for (const spesa of [...spese].reverse()) {
+  for (const spesa of spese) {
     if (spesa.data !== giornoPrecedente) {
       voci.push(creaTestaGiorno(spesa.data));
       giornoPrecedente = spesa.data;

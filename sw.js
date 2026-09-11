@@ -7,7 +7,7 @@
 // worker da installare, e il nome nuovo fa cancellare ad "activate" il deposito
 // precedente, così non restano in giro copie morte.
 
-const VERSIONE = "spese-v6";
+const VERSIONE = "spese-v7";
 
 const RISORSE = [
   "./",

@@ -9,8 +9,8 @@ dati restano nel dispositivo di chi la usa.
 **Due viste.** Una barra in basso commuta fra *Mese* e *Spese*. *Mese* risponde
 alla domanda «quanto ho speso»: totale del mese scelto, ripartizione per
 categoria, andamento degli ultimi sei mesi, medie. *Spese* è il registro:
-l'elenco raggruppato per giorno, i filtri e l'inserimento, con il pulsante di
-aggiunta fisso in basso. Le due viste sono indipendenti — spostarsi di mese nel
+l'elenco raggruppato per giorno dal più vecchio al più recente, i filtri e
+l'inserimento, con il pulsante di aggiunta fisso in basso. Le due viste sono indipendenti — spostarsi di mese nel
 cruscotto non tocca i filtri dell'elenco.
 
 **Spese.** Registrazione di data, importo, categoria e descrizione facoltativa.
